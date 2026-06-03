@@ -123,7 +123,7 @@
 
 <div id="info-card">
 <div class="card-title">✨ 小刺猬的宇宙工坊 ✨</div>
-<div class="card-content"><p>🌍 地球公转 · 四季演示</p><p>🐳 作者：小刺猬</p><p>🌐 xiaotaiyang.netlify.app</p></div></div>
+<div class="card-content"><p>🌍 地球公转 · 四季演示</p><p>🐳 作者：小刺猬</p><p>🌐 https://xiaociwei01.github.io/diyue/</p></div></div>
 
 <div id="date-display">📍 <span class="highlight" id="date-text">春分</span> · 公转位置 <span id="angle-text">0°</span></div>
 
@@ -302,11 +302,12 @@ function createOrbitLine(radius, color = '#446688', opacity = 0.3) {
 const orbitLine = createOrbitLine(BASE_ORBIT_R, '#88ccff', 0.4); solarSystemGroup.add(orbitLine);
 
 const seasonMarkers = [];
+// ===== 修正：夏至和冬至角度互换 =====
 const seasons = [
     { name: '春分', angle: 0, color: '#88dd88', date: '3月20日', desc: '太阳直射赤道，全球昼夜等长。北半球进入春季，万物复苏。' },
-    { name: '夏至', angle: Math.PI / 2, color: '#ff8844', date: '6月21日', desc: '太阳直射北回归线（23.5°N），北半球白昼最长。北极圈内出现极昼，南极圈内出现极夜。' },
+    { name: '夏至', angle: 3 * Math.PI / 2, color: '#ff8844', date: '6月21日', desc: '太阳直射北回归线（23.5°N），北半球白昼最长。北极圈内出现极昼，南极圈内出现极夜。北半球夏季开始。' },
     { name: '秋分', angle: Math.PI, color: '#ffdd88', date: '9月22日', desc: '太阳再次直射赤道，全球昼夜等长。北半球进入秋季，气温渐凉。' },
-    { name: '冬至', angle: 3 * Math.PI / 2, color: '#88bbff', date: '12月21日', desc: '太阳直射南回归线（23.5°S），北半球白昼最短。北极圈内出现极夜，南极圈内出现极昼。' },
+    { name: '冬至', angle: Math.PI / 2, color: '#88bbff', date: '12月21日', desc: '太阳直射南回归线（23.5°S），北半球白昼最短。北极圈内出现极夜，南极圈内出现极昼。北半球冬季开始。' },
 ];
 seasons.forEach(s => {
     const x = Math.cos(s.angle) * BASE_ORBIT_R, z = Math.sin(s.angle) * BASE_ORBIT_R;
@@ -366,7 +367,6 @@ function updateDisplay(speed) { if (speed < 0.01) speed = 0.01; if (speed > 9999
 
 timeSlider.oninput = () => { const speed = sliderToSpeed(parseFloat(timeSlider.value)); tS = speed; updateDisplay(speed); if (iP && speed > 0) { iP = false; updateBtn(); } updateBtn(); };
 
-// 修复：输入框允许自由输入，失焦时才校验
 timeInput.addEventListener('focus', () => {});
 timeInput.addEventListener('blur', () => {
     let v = parseFloat(timeInput.value);
@@ -414,25 +414,32 @@ resetRadius.onclick = () => {
     document.querySelectorAll('#radius-sliders .sr input').forEach(inp => { inp.value = 1.0; inp.nextSibling.textContent = '1.0'; });
 };
 
+// ===== 修正：跳转参数互换 =====
 function jumpToSeason(angleRad) {
     vT = angleRad / 0.3; earthGroup.position.x = Math.cos(angleRad) * BASE_ORBIT_R; earthGroup.position.z = Math.sin(angleRad) * BASE_ORBIT_R;
     const deg = ((angleRad * 180 / Math.PI) % 360 + 360) % 360; angleText.textContent = deg.toFixed(0) + '°'; dateText.textContent = getSeasonName(angleRad);
 }
-$('jump-spring').onclick = () => jumpToSeason(0); $('jump-summer').onclick = () => jumpToSeason(Math.PI / 2);
-$('jump-autumn').onclick = () => jumpToSeason(Math.PI); $('jump-winter').onclick = () => jumpToSeason(3 * Math.PI / 2);
+$('jump-spring').onclick = () => jumpToSeason(0);
+$('jump-summer').onclick = () => jumpToSeason(3 * Math.PI / 2); // 夏至在正上（270°）
+$('jump-autumn').onclick = () => jumpToSeason(Math.PI);
+$('jump-winter').onclick = () => jumpToSeason(Math.PI / 2); // 冬至在正下（90°）
 
 resetView.onclick = () => { camera.position.set(8, 6, 14); controls.target.set(0, 0, 0); controls.update(); exitFP(); };
 
 let ctrlOpen = false; toggleCtrl.onclick = () => { ctrlOpen = !ctrlOpen; ctrlPanel.classList.toggle('open', ctrlOpen); };
 document.addEventListener('pointerdown', e => { if (ctrlOpen && !ctrlPanel.contains(e.target) && e.target !== toggleCtrl) { ctrlOpen = false; ctrlPanel.classList.remove('open'); } });
 
+// ===== 修正：getSeasonName 角度互换 =====
 function getSeasonName(angle) {
     const a = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const eps = 0.15;
     if (Math.abs(a - 0) < eps || Math.abs(a - 2 * Math.PI) < eps) return '🌸 春分';
-    if (Math.abs(a - Math.PI / 2) < eps) return '☀️ 夏至'; if (Math.abs(a - Math.PI) < eps) return '🍂 秋分';
-    if (Math.abs(a - 3 * Math.PI / 2) < eps) return '❄️ 冬至';
-    if (a > 0 && a < Math.PI / 2) return '春分→夏至'; if (a > Math.PI / 2 && a < Math.PI) return '夏至→秋分';
-    if (a > Math.PI && a < 3 * Math.PI / 2) return '秋分→冬至'; return '冬至→春分';
+    if (Math.abs(a - 3 * Math.PI / 2) < eps) return '☀️ 夏至'; // 270°
+    if (Math.abs(a - Math.PI) < eps) return '🍂 秋分';
+    if (Math.abs(a - Math.PI / 2) < eps) return '❄️ 冬至'; // 90°
+    if ((a > 0 && a < Math.PI / 2) || (a > 3 * Math.PI / 2 && a < 2 * Math.PI)) return '冬至→春分';
+    if (a > Math.PI / 2 && a < Math.PI) return '冬至→春分';
+    if (a > Math.PI && a < 3 * Math.PI / 2) return '秋分→冬至';
+    return '夏至→秋分';
 }
 
 const clock = new THREE.Clock();
@@ -460,7 +467,7 @@ animate();
 window.onresize = () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); };
 window.addEventListener('keydown', e => { if (e.key === ' ' && !e.target.matches('input')) { e.preventDefault(); iP ? btnPlay.click() : btnPause.click(); } if (e.key === 'Escape' && isFP) { exitFP(); infoPanel.classList.remove('visible'); } });
 camera.position.set(8, 6, 14); controls.update();
-console.log('🌍 地球版·输入框修复 已启动');
+console.log('🌍 地球版·节气角度修正 已启动');
 </script>
 </body>
 </html>
