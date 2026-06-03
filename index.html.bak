@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>地球 · 节气 · 空间站</title>
+    <style>
+        :root {
+            --panel-bg: rgba(8, 10, 28, 0.93);
+            --text-color: #e0e8f5;
+            --accent: #ffb347;
+            --glow: 0 0 40px rgba(80, 150, 255, 0.5);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            width: 100vw; height: 100vh; overflow: hidden; background: #000008;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+            cursor: grab; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        body:active { cursor: grabbing; }
+        body.pointing { cursor: pointer; }
+        canvas { display: block; }
+
+        body.fp-mode #title-bar,
+        body.fp-mode #legend,
+        body.fp-mode #ctrl-panel,
+        body.fp-mode #info-card,
+        body.fp-mode #event-badge,
+        body.fp-mode #data-card,
+        body.fp-mode #mobileTip { display: none !important; }
+        body.fp-mode #fp-hud { display: flex !important; }
+
+        #title-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+            padding: 10px 16px; pointer-events: none;
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(180deg, rgba(0, 0, 16, 0.6) 0%, transparent 100%);
+        }
+        #title-bar h1 { font-size: clamp(0.85rem, 1.5vw, 1.2rem); font-weight: 600; color: #fff; letter-spacing: 0.06em; text-shadow: 0 0 40px rgba(100, 160, 255, 0.5); margin: 0; }
+        #title-bar .hint { font-size: 0.65rem; color: rgba(190, 205, 240, 0.6); letter-spacing: 0.03em; }
+        #title-bar .top-btns { display: flex; gap: 8px; pointer-events: auto; }
+        #title-bar .top-btns button { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #c8d8f0; padding: 8px 16px; border-radius: 10px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(8px); min-width: 44px; }
+        #title-bar .top-btns button:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.3); }
+        #title-bar .top-btns button.active { background: rgba(255, 180, 60, 0.25); border-color: #ffb347; color: #ffb347; }
+        @media (max-width: 600px) { #title-bar .hint { display: none; } #title-bar { padding: 6px 10px; } #title-bar .top-btns button { padding: 6px 12px; font-size: 0.7rem; min-width: 36px; } }
+
+        #info-card { position: fixed; top: 70px; left: 16px; z-index: 15; background: rgba(20, 30, 45, 0.35); backdrop-filter: blur(14px); border-radius: 20px; padding: 12px 18px; border: 1px solid rgba(255, 255, 255, 0.2); max-width: 260px; pointer-events: none; font-size: 0.75rem; color: #f0f4ff; font-family: system-ui, 'Segoe UI', sans-serif; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.1) inset; }
+        #info-card .card-title { font-size: 0.85rem; font-weight: bold; color: #ffb347; margin-bottom: 6px; }
+        #info-card .card-content { line-height: 1.5; } #info-card .card-content p { margin: 4px 0; }
+        @media (max-width: 700px) { #info-card { top: 60px; left: 10px; padding: 8px 12px; max-width: 220px; font-size: 0.7rem; } }
+
+        #date-display { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(6, 10, 28, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 5px 18px; font-size: 0.8rem; color: rgba(190, 205, 240, 0.9); pointer-events: none; text-align: center; white-space: nowrap; }
+        #date-display .highlight { color: #ffb347; font-weight: 600; }
+
+        #legend { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; pointer-events: none; }
+        #legend .dot { display: inline-flex; align-items: center; gap: 3px; font-size: 0.5rem; color: rgba(190, 200, 230, 0.7); background: rgba(6, 10, 28, 0.55); padding: 2px 7px; border-radius: 12px; backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        #legend .dot span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        @media (max-width: 600px) { #legend { bottom: 4px; gap: 3px; } }
+
+        .mobile-tip { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 320px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #ffdfb8; font-size: 12px; text-align: center; border: 1px solid rgba(255, 200, 100, 0.4); z-index: 200; pointer-events: auto; }
+        .mobile-tip .close-tip { background: none; border: none; color: #ffaa66; font-size: 16px; cursor: pointer; padding: 0 6px; }
+        @media (min-width: 768px) { .mobile-tip { display: none !important; } }
+
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: #000008; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, 'Segoe UI', sans-serif; transition: opacity 0.8s ease; pointer-events: auto; }
+        #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        #loading-overlay .loader-icon { font-size: 48px; margin-bottom: 12px; animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #loading-overlay .loader-title { font-size: 1.1rem; color: #ffb347; font-weight: 600; margin-bottom: 16px; }
+        #loading-overlay .loader-bar-wrap { width: 220px; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; }
+        #loading-overlay .loader-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ffb347, #ffdd88); transition: width 0.3s; }
+        #loading-overlay .loader-sub { font-size: 0.7rem; color: rgba(190, 205, 240, 0.5); margin-top: 10px; }
+
+        #info-panel { position: fixed; z-index: 100; pointer-events: none; opacity: 0; transform: translate(-50%, -50%) scale(0.85); transition: opacity 0.3s, transform 0.3s; top: 50%; left: 50%; width: min(400px, 88vw); background: var(--panel-bg); border-radius: 20px; padding: 0; box-shadow: var(--glow), 0 20px 60px rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(24px); color: var(--text-color); overflow: hidden; }
+        #info-panel.visible { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+        #info-panel .panel-header { padding: 14px 18px 6px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+        #info-panel .panel-header h2 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }
+        #info-panel .close-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04); color: #999; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+        #info-panel .close-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+        #info-panel .panel-body { padding: 10px 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+        #info-panel .info-row { display: flex; justify-content: space-between; font-size: 0.78rem; line-height: 1.5; border-bottom: 1px solid rgba(255, 255, 255, 0.03); padding-bottom: 2px; }
+        #info-panel .info-row .label { color: rgba(170, 185, 215, 0.75); }
+        #info-panel .info-row .value { color: #e4edff; font-weight: 500; text-align: right; }
+        #info-panel .info-desc { margin-top: 3px; font-size: 0.74rem; color: rgba(180, 195, 225, 0.8); line-height: 1.5; }
+        #info-panel .obj-icon { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 14px rgba(150, 180, 255, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); }
+
+        #ctrl-panel { position: fixed; top: 0; right: 0; width: min(340px, 88vw); height: 100vh; z-index: 50; background: rgba(6, 10, 28, 0.94); backdrop-filter: blur(28px); border-left: 1px solid rgba(255, 255, 255, 0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1); overflow-y: auto; padding: 18px 18px 30px; color: var(--text-color); pointer-events: none; }
+        #ctrl-panel.open { transform: translateX(0); pointer-events: auto; }
+        #ctrl-panel .pt { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 16px; }
+        #ctrl-panel .sec { margin-bottom: 16px; background: rgba(255, 255, 255, 0.05); border-radius: 14px; padding: 12px; border: 1px solid rgba(255, 255, 255, 0.08); }
+        #ctrl-panel .sec-title { font-size: 0.8rem; font-weight: 600; color: rgba(200, 215, 245, 0.85); margin-bottom: 10px; text-transform: uppercase; }
+        .time-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .time-row .lbl { font-size: 0.75rem; color: rgba(170, 185, 215, 0.8); min-width: 36px; white-space: nowrap; }
+        .time-row .val { font-size: 0.85rem; font-weight: 600; color: #ffb347; min-width: 50px; text-align: center; }
+        .time-row .bg { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+        .time-row .bg button { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.15); color: #c8d8f0; padding: 5px 10px; border-radius: 8px; font-size: 0.65rem; cursor: pointer; pointer-events: auto; }
+        .time-input-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+        .time-input-row input[type="number"] { flex: 1; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 5px 8px; color: #ffb347; font-size: 0.75rem; font-weight: 600; outline: none; pointer-events: auto; font-family: inherit; min-width: 0; }
+        .sr { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .sr .sl { font-size: 0.7rem; color: rgba(170, 185, 215, 0.85); min-width: 36px; }
+        .sr .sv { font-size: 0.7rem; font-weight: 600; color: #aac0e8; min-width: 30px; text-align: right; }
+        .sr input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); outline: none; pointer-events: auto; }
+        .sr input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #ffb347; cursor: pointer; border: 2px solid rgba(255, 255, 255, 0.25); }
+        .rst-btn { width: 100%; padding: 10px 0; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(60, 120, 255, 0.1); color: #88ccff; border-radius: 10px; font-size: 0.8rem; cursor: pointer; pointer-events: auto; margin-top: 4px; }
+        .rst-btn.danger { background: rgba(255, 60, 60, 0.1); color: #ff8877; border-color: rgba(255, 80, 80, 0.2); }
+        .rst-btn.danger:hover { background: rgba(255, 60, 60, 0.18); }
+
+        #fp-hud { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 20; background: rgba(6, 10, 28, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 8px 18px; font-size: 0.75rem; color: rgba(190, 205, 240, 0.8); pointer-events: none; opacity: 0; display: none; align-items: center; gap: 8px; }
+        #fp-hud.show { opacity: 1; display: flex; }
+        #fp-exit-btn { background: rgba(255, 60, 60, 0.2); border: 1px solid rgba(255, 80, 80, 0.3); color: #ff8877; padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; cursor: pointer; pointer-events: auto; }
+
+        #tooltip { position: fixed; z-index: 60; pointer-events: none; background: rgba(6, 10, 28, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 6px 14px; font-size: 0.8rem; color: #e4edff; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+        #tooltip.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div id="loading-overlay"><div class="loader-icon">🌍</div><div class="loader-title">地球加载中</div><div class="loader-bar-wrap"><div class="loader-bar" id="loader-bar"></div></div><div class="loader-sub" id="loader-sub">初始化场景...</div></div>
+
+<div id="title-bar">
+<h1>🌍 地球 · 节气 · 空间站</h1>
+<span class="hint">🖱 拖拽 · 滚轮缩放 · 点击查看详情</span>
+<div class="top-btns"><button id="toggle-ctrl">⚙️</button></div></div>
+
+<div id="info-card">
+<div class="card-title">✨ 小刺猬的宇宙工坊 ✨</div>
+<div class="card-content"><p>🌍 地球公转 · 四季演示</p><p>🐳 作者：小刺猬</p><p>🌐 xiaotaiyang.netlify.app</p></div></div>
+
+<div id="date-display">📍 <span class="highlight" id="date-text">春分</span> · 公转位置 <span id="angle-text">0°</span></div>
+
+<div id="legend">
+<span class="dot"><span style="background:#ffcc33;"></span>太阳</span>
+<span class="dot"><span style="background:#5599dd;"></span>地球</span>
+<span class="dot"><span style="background:#c8c4be;"></span>月球</span>
+<span class="dot"><span style="background:#ff6688;"></span>ISS</span>
+<span class="dot"><span style="background:#ff4444;"></span>天宫</span>
+<span class="dot"><span style="background:#88dd88;"></span>春分</span>
+<span class="dot"><span style="background:#ff8844;"></span>夏至</span>
+<span class="dot"><span style="background:#ffdd88;"></span>秋分</span>
+<span class="dot"><span style="background:#88bbff;"></span>冬至</span>
+</div>
+
+<div id="mobileTip" class="mobile-tip" style="display:none;"><span>📱 推荐使用平板或电脑浏览 🌟</span><button id="closeTip" class="close-tip">✖</button></div>
+<div id="tooltip">🌍 地球</div>
+
+<div id="fp-hud"><span style="color:#ffb347;font-weight:600;">🪐 第一视角</span><span id="fp-hud-planet">地球</span><button id="fp-exit-btn">✕ 退出</button></div>
+
+<div id="ctrl-panel">
+<div class="pt">🎛️ 控制面板</div>
+<div class="sec">
+<div class="sec-title">⏱ 时间控制 (0.01 ~ 9999×)</div>
+<div class="time-row"><span class="lbl">速度</span><input type="range" id="time-speed" min="0" max="100" step="0.1" value="50" style="flex:1;pointer-events:auto;"><span class="val" id="time-display">1.0×</span></div>
+<div class="time-input-row"><span class="lbl">手动</span><input type="number" id="time-input" min="0.01" max="9999" step="0.01" value="1" placeholder="0.01~9999"><span style="font-size:0.65rem;color:rgba(170,185,215,0.5);">×</span></div>
+<div class="time-row"><div class="bg"><button id="btn-pause">⏸</button><button id="btn-play">▶</button></div></div>
+</div>
+<div class="sec">
+<div class="sec-title">🌐 快速跳转</div>
+<div class="time-row"><div class="bg" style="flex-wrap:wrap;gap:4px;">
+<button id="jump-spring">🌸春分</button>
+<button id="jump-summer">☀️夏至</button>
+<button id="jump-autumn">🍂秋分</button>
+<button id="jump-winter">❄️冬至</button>
+</div></div></div>
+<div class="sec">
+<div class="sec-title">🪐 天体半径倍率</div>
+<div id="radius-sliders"></div>
+<p style="font-size:0.6rem;color:rgba(170,185,215,0.4);margin-top:6px;">💡 放大太阳 → 轨道和节气同步放大</p>
+<button class="rst-btn danger" id="reset-radius" style="margin-top:8px;">🔄 重置半径倍率</button>
+</div>
+<button class="rst-btn" id="reset-view">🔄 重置视角</button>
+</div>
+
+<div id="info-panel"><div class="panel-header"><h2 id="panel-title">天体</h2><button class="close-btn" id="close-panel">✕</button></div><div class="panel-body" id="panel-body"></div></div>
+
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const infoPanel = $('info-panel'), panelTitle = $('panel-title'), panelBody = $('panel-body'), closeBtn = $('close-panel');
+const toggleCtrl = $('toggle-ctrl'), ctrlPanel = $('ctrl-panel');
+const timeSlider = $('time-speed'), timeDisplay = $('time-display'), timeInput = $('time-input');
+const btnPause = $('btn-pause'), btnPlay = $('btn-play');
+const tooltip = $('tooltip');
+const dateText = $('date-text'), angleText = $('angle-text');
+const loadingOverlay = $('loading-overlay'), loaderBar = $('loader-bar'), loaderSub = $('loader-sub');
+const fpHud = $('fp-hud'), fpHudPlanet = $('fp-hud-planet'), fpExitBtn = $('fp-exit-btn');
+const resetView = $('reset-view'), resetRadius = $('reset-radius');
+const radiusSliders = $('radius-sliders');
+const mobileTip = $('mobileTip'), closeTipBtn = $('closeTip');
+if (mobileTip && closeTipBtn) { const u = () => mobileTip.style.display = window.innerWidth < 768 ? 'flex' : 'none'; u(); closeTipBtn.onclick = () => mobileTip.style.display = 'none'; window.addEventListener('resize', u); }
+
+// 场景
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.prepend(renderer.domElement);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.5, 500);
+camera.position.set(8, 6, 14);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.target.set(0, 0, 0);
+controls.minDistance = 3; controls.maxDistance = 120; controls.update();
+
+// 光照
+const ambientLight = new THREE.AmbientLight('#4466aa', 0.3); scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight('#88bbdd', '#224466', 0.4); scene.add(hemiLight);
+const sunLight = new THREE.DirectionalLight('#ffeecc', 2.5);
+sunLight.position.set(50, 30, 50); sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 10; sunLight.shadow.camera.far = 100;
+sunLight.shadow.camera.left = -15; sunLight.shadow.camera.right = 15;
+sunLight.shadow.camera.top = 15; sunLight.shadow.camera.bottom = -15;
+scene.add(sunLight);
+const backFill = new THREE.DirectionalLight('#554433', 0.3); backFill.position.set(-30, -10, -30); scene.add(backFill);
+
+function createStars() {
+    const n = 3000, p = new Float32Array(n * 3), c = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+        const t = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 100 + Math.random() * 200;
+        p[i*3] = Math.sin(ph)*Math.cos(t)*r; p[i*3+1] = Math.sin(ph)*Math.sin(t)*r*0.6; p[i*3+2] = Math.cos(ph)*r;
+        const cc = Math.random();
+        if (cc < 0.6) { c[i*3]=.7+Math.random()*.3; c[i*3+1]=.7+Math.random()*.3; c[i*3+2]=.8+Math.random()*.2; }
+        else if (cc < 0.8) { c[i*3]=.5+Math.random()*.4; c[i*3+1]=.6+Math.random()*.3; c[i*3+2]=.9+Math.random()*.1; }
+        else { c[i*3]=.9+Math.random()*.1; c[i*3+1]=.5+Math.random()*.3; c[i*3+2]=.3+Math.random()*.3; }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({ size: 0.15, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8, sizeAttenuation: true }));
+}
+const stars = createStars(); scene.add(stars);
+
+const texCache = new Map();
+const texFiles = { '太阳': '2k_sun.jpg', '地球': '2k_earth_daymap.jpg', '月球': '2k_moon.jpg' };
+let loaded = 0, total = Object.keys(texFiles).length;
+function updL(p, m) { loaderBar.style.width = Math.min(p, 100) + '%'; if (m) loaderSub.textContent = m; }
+async function loadTex(n) {
+    const fn = texFiles[n]; if (!fn) return null; if (texCache.has(fn)) return texCache.get(fn);
+    try { const t = await new Promise((res, rej) => new THREE.TextureLoader().load(fn, res, undefined, rej)); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; texCache.set(fn, t); loaded++; updL(loaded / total * 100, `加载纹理 ${loaded}/${total} - ${n}`); return t; }
+    catch { loaded++; updL(loaded / total * 100, `加载纹理 ${loaded}/${total} - ${n}(备用)`); return null; }
+}
+
+// 太阳
+const sun = new THREE.Mesh(new THREE.SphereGeometry(1.5, 48, 48), new THREE.MeshBasicMaterial({ color: '#fffef0' }));
+sun.name = '太阳'; sun.userData = { name: '☀️ 太阳', type: 'G型主序星', diameter: '1,392,700 km', distance: '中心', temperature: '表面 5,500°C', moons: '—', desc: '太阳是太阳系的中心天体，地球绕其公转，形成四季更替。', color: '#ffb833' }; scene.add(sun);
+loadTex('太阳').then(t => { if (t) { sun.material.map = t; sun.material.color.set('#ffffff'); sun.material.needsUpdate = true; } });
+
+function mkGlow(c, s, o) {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+    const ctx = cv.getContext('2d'), g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, c); g.addColorStop(0.15, c); g.addColorStop(0.4, 'rgba(255,180,40,0.25)'); g.addColorStop(0.7, 'rgba(255,80,10,0.05)'); g.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(cv), mat = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: o }), sp = new THREE.Sprite(mat);
+    sp.userData = { isGlow: true }; sp.scale.set(s, s, 1); return sp;
+}
+[[6, 0.9], [9, 0.5], [13, 0.25]].forEach(([s, o]) => sun.add(mkGlow('#fffef0', s, o)));
+
+const BASE_ORBIT_R = 6;
+const BASE_EARTH_R = 0.6;
+const AXIAL_TILT = 23.5 * Math.PI / 180;
+const allClickables = [sun];
+const solarSystemGroup = new THREE.Group(); scene.add(solarSystemGroup);
+const earthGroup = new THREE.Group(); solarSystemGroup.add(earthGroup);
+const earthTiltGroup = new THREE.Group(); earthGroup.add(earthTiltGroup);
+earthTiltGroup.rotation.x = AXIAL_TILT;
+
+const earth = new THREE.Mesh(new THREE.SphereGeometry(BASE_EARTH_R, 48, 48), new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.05, color: '#5599dd' }));
+earth.name = '地球'; earth.userData = { name: '🌍 地球', type: '岩石行星', diameter: '12,742 km', distance: '1.496亿 km', temperature: '-89°C ~ 57°C', moons: '1 (月球)', desc: '地球是太阳系中唯一已知存在生命的行星。自转轴倾斜23.5°，形成了四季更替。', color: '#5599dd', isFP: true };
+earth.castShadow = true; earthTiltGroup.add(earth); allClickables.push(earth);
+loadTex('地球').then(t => { if (t) { earth.material.map = t; earth.material.color.set('#ffffff'); earth.material.needsUpdate = true; } });
+
+const atmos = new THREE.Mesh(new THREE.SphereGeometry(BASE_EARTH_R * 1.06, 24, 24), new THREE.MeshBasicMaterial({ color: '#88ccff', transparent: true, opacity: 0.12, side: THREE.BackSide })); earth.add(atmos);
+const axisPts = [new THREE.Vector3(0, -BASE_EARTH_R * 1.5, 0), new THREE.Vector3(0, BASE_EARTH_R * 1.5, 0)];
+const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPts); earthTiltGroup.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: '#ffdd88', transparent: true, opacity: 0.4 })));
+const ac = new THREE.Mesh(new THREE.RingGeometry(BASE_EARTH_R * 0.65, BASE_EARTH_R * 0.7, 32), new THREE.MeshBasicMaterial({ color: '#88ddff', transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
+ac.rotation.x = -Math.PI / 2; ac.position.y = BASE_EARTH_R * 0.4; earthTiltGroup.add(ac);
+const anc = new THREE.Mesh(new THREE.RingGeometry(BASE_EARTH_R * 0.65, BASE_EARTH_R * 0.7, 32), new THREE.MeshBasicMaterial({ color: '#88ddff', transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
+anc.rotation.x = -Math.PI / 2; anc.position.y = -BASE_EARTH_R * 0.4; earthTiltGroup.add(anc);
+
+const moonOrbit = new THREE.Group(); earthTiltGroup.add(moonOrbit);
+const moon = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 24), new THREE.MeshStandardMaterial({ roughness: 0.8, color: '#c8c4be' })); moon.position.set(1.2, 0, 0);
+moon.name = '月球'; moon.userData = { name: '🌙 月球', type: '天然卫星', diameter: '3,474 km', distance: '距地球 38.4万 km', temperature: '-233°C ~ 123°C', moons: '—', desc: '月球是地球唯一的天然卫星，对地球的潮汐和轴倾角稳定起着关键作用。', color: '#c8c4be', isSatellite: true, isFP: true };
+moon.castShadow = true; moonOrbit.add(moon); allClickables.push(moon);
+loadTex('月球').then(t => { if (t) { moon.material.map = t; moon.material.needsUpdate = true; } });
+
+const iss = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff6688' }));
+iss.name = 'ISS (国际空间站)'; iss.userData = { name: '🛰️ ISS (国际空间站)', type: '空间站', diameter: '109 m', distance: '距地球 ~408 km', temperature: '—', moons: '—', desc: '国际空间站是由15个国家合作建设的近地轨道空间设施。时速约28,000 km/h，每90分钟绕地球一圈。', color: '#ff6688', isSatellite: true, isFP: true };
+const issGroup = new THREE.Group(); earthTiltGroup.add(issGroup); iss.position.set(1.6, 0.2, 0); issGroup.add(iss); allClickables.push(iss);
+
+const tiangong = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff4444' }));
+tiangong.name = '天宫空间站 (中国)'; tiangong.userData = { name: '🇨🇳 天宫空间站 (中国)', type: '空间站', diameter: '~50 m', distance: '距地球 ~400 km', temperature: '—', moons: '—', desc: '天宫空间站是中国自主建造的模块化空间站。2022年基本建成，设计寿命10年以上。', color: '#ff4444', isSatellite: true, isFP: true };
+const tgGroup = new THREE.Group(); earthTiltGroup.add(tgGroup); tiangong.position.set(1.4, -0.15, 0); tgGroup.add(tiangong); allClickables.push(tiangong);
+
+function createOrbitLine(radius, color = '#446688', opacity = 0.3) {
+    const pts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius)); }
+    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+}
+const orbitLine = createOrbitLine(BASE_ORBIT_R, '#88ccff', 0.4); solarSystemGroup.add(orbitLine);
+
+const seasonMarkers = [];
+const seasons = [
+    { name: '春分', angle: 0, color: '#88dd88', date: '3月20日', desc: '太阳直射赤道，全球昼夜等长。北半球进入春季，万物复苏。' },
+    { name: '夏至', angle: Math.PI / 2, color: '#ff8844', date: '6月21日', desc: '太阳直射北回归线（23.5°N），北半球白昼最长。北极圈内出现极昼，南极圈内出现极夜。' },
+    { name: '秋分', angle: Math.PI, color: '#ffdd88', date: '9月22日', desc: '太阳再次直射赤道，全球昼夜等长。北半球进入秋季，气温渐凉。' },
+    { name: '冬至', angle: 3 * Math.PI / 2, color: '#88bbff', date: '12月21日', desc: '太阳直射南回归线（23.5°S），北半球白昼最短。北极圈内出现极夜，南极圈内出现极昼。' },
+];
+seasons.forEach(s => {
+    const x = Math.cos(s.angle) * BASE_ORBIT_R, z = Math.sin(s.angle) * BASE_ORBIT_R;
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: s.color }));
+    marker.position.set(x, 0, z); marker.name = s.name;
+    marker.userData = { name: `🌸 ${s.name}`, type: '节气', diameter: s.date, distance: `轨道位置 ${Math.round(s.angle * 180 / Math.PI)}°`, temperature: '—', moons: '—', desc: s.desc, color: s.color, isSeason: true };
+    solarSystemGroup.add(marker); allClickables.push(marker); seasonMarkers.push(marker);
+    const glow = mkGlow(s.color, 0.8, 0.2); glow.position.set(x, 0.3, z); solarSystemGroup.add(glow);
+    const lp = [new THREE.Vector3(x, -0.3, z), new THREE.Vector3(x, 0.3, z)];
+    solarSystemGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(lp), new THREE.LineBasicMaterial({ color: s.color, transparent: true, opacity: 0.3 })));
+});
+
+const rayLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)]), new THREE.LineBasicMaterial({ color: '#ffdd44', transparent: true, opacity: 0.2 }));
+solarSystemGroup.add(rayLine);
+
+const scaleFactors = { '太阳': 1, '地球': 1 };
+
+const lt = setInterval(() => { if (loaded >= total) { clearInterval(lt); updL(100, '加载完成！'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); } }, 200);
+setTimeout(() => { clearInterval(lt); loadingOverlay.classList.add('hidden'); }, 8000);
+
+// 射线检测
+const raycaster = new THREE.Raycaster(), mouseVec = new THREE.Vector2();
+let mDown = new THREE.Vector2(), mUp = new THREE.Vector2(), isDragging = false;
+function getHits(e) { mouseVec.x = e.clientX / innerWidth * 2 - 1; mouseVec.y = -(e.clientY / innerHeight) * 2 + 1; raycaster.setFromCamera(mouseVec, camera); return raycaster.intersectObjects(allClickables, true).filter(h => { let o = h.object; while (o) { if (o.userData?.isGlow) return false; o = o.parent; } return true; }); }
+function topObj(h) { for (const x of h) { let o = x.object; while (o) { if (o.userData?.name && !o.userData?.isGlow) return o; o = o.parent; } } return null; }
+
+renderer.domElement.addEventListener('pointerdown', e => { mDown.set(e.clientX, e.clientY); isDragging = false; });
+renderer.domElement.addEventListener('pointermove', e => { if (mDown.distanceTo(new THREE.Vector2(e.clientX, e.clientY)) > 3) isDragging = true; const h = topObj(getHits(e)); if (h && h.userData.name && !h.userData.isSeason) { tooltip.textContent = h.userData.name; tooltip.style.left = e.clientX + 12 + 'px'; tooltip.style.top = e.clientY - 10 + 'px'; tooltip.classList.add('show'); } else tooltip.classList.remove('show'); });
+renderer.domElement.addEventListener('pointerup', e => { mUp.set(e.clientX, e.clientY); if (!isDragging && mDown.distanceTo(mUp) < 4) { const h = topObj(getHits(e)); if (h) showInfoPanel(h.userData); } isDragging = false; });
+renderer.domElement.addEventListener('touchstart', e => { if (e.touches.length === 1) { mDown.set(e.touches[0].clientX, e.touches[0].clientY); isDragging = false; } }, { passive: false });
+renderer.domElement.addEventListener('touchend', e => { if (!isDragging && e.changedTouches.length === 1) { const t = e.changedTouches[0]; if (mDown.distanceTo(new THREE.Vector2(t.clientX, t.clientY)) < 8) { const h = topObj(getHits({ clientX: t.clientX, clientY: t.clientY })); if (h) showInfoPanel(h.userData); } } });
+closeBtn.addEventListener('click', () => infoPanel.classList.remove('visible'));
+
+// 第一视角
+let isFP = false, fpTarget = null, fpSP = null, fpST = null;
+function enterFP(obj) { if (isFP) return; fpTarget = obj; fpSP = camera.position.clone(); fpST = controls.target.clone(); isFP = true; controls.enabled = false; fpHudPlanet.textContent = obj.userData.name.replace(/[🛰️🇨🇳🌙☀️🌍]/g, '').trim(); fpHud.classList.add('show'); infoPanel.classList.remove('visible'); document.body.classList.add('fp-mode'); const p = obj.position.clone(); let sz = 0.5; if (obj.geometry?.parameters?.radius) sz = obj.geometry.parameters.radius; if (sz < 0.05) sz = 0.5; const o = new THREE.Vector3(sz * 4 + 1, sz * 2, sz * 4 + 1); camera.position.copy(p.clone().add(o)); controls.target.copy(p); controls.update(); setTimeout(() => { controls.enabled = true; controls.minDistance = Math.max(0.3, sz * 0.5); controls.maxDistance = sz * 10 + 3; }, 300); }
+function exitFP() { if (!isFP) return; isFP = false; fpTarget = null; fpHud.classList.remove('show'); document.body.classList.remove('fp-mode'); controls.enabled = true; controls.minDistance = 3; controls.maxDistance = 120; if (fpSP) { camera.position.copy(fpSP); controls.target.copy(fpST); controls.update(); } }
+fpExitBtn?.addEventListener('click', () => { exitFP(); infoPanel.classList.remove('visible'); });
+
+function showInfoPanel(data) {
+    let icon = '🪐'; if (data.isSatellite) icon = '🛰️'; if (data.name?.includes('太阳')) icon = '☀️'; if (data.name?.includes('月球')) icon = '🌙'; if (data.isSeason) icon = '🌸';
+    panelTitle.textContent = `${icon} ${data.name.replace(/[🛰️🇨🇳🌙☀️🌍🌸]/g, '').trim()}`;
+    let fpH = '';
+    if (data.isFP && !data.isSeason) { const a = isFP && fpTarget && fpTarget.userData.name === data.name; fpH = `<button id="fp-btn" style="width:100%;padding:10px 0;border:1px solid ${a ? 'rgba(255,80,80,0.3)' : 'rgba(100,180,255,0.25)'};background:${a ? 'rgba(255,60,60,0.15)' : 'rgba(60,120,255,0.1)'};color:${a ? '#ff8877' : '#88ccff'};border-radius:10px;font-size:.8rem;cursor:pointer;pointer-events:auto;margin-top:4px;">${a ? '🛸 退出第一视角' : '🚀 第一视角'}</button>`; }
+    panelBody.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;"><div class="obj-icon" style="background:${data.color};width:30px;height:30px;"></div><span style="font-size:.8rem;color:#bcc8dd;">${data.type || ''}</span></div><div class="info-row"><span class="label">直径</span><span class="value">${data.diameter || '—'}</span></div><div class="info-row"><span class="label">距离</span><span class="value">${data.distance || '—'}</span></div>${data.temperature && data.temperature !== '—' ? `<div class="info-row"><span class="label">温度</span><span class="value">${data.temperature}</span></div>` : ''}${data.moons && data.moons !== '—' ? `<div class="info-row"><span class="label">卫星</span><span class="value">${data.moons}</span></div>` : ''}<div class="info-desc">${data.desc || ''}</div>${fpH}`;
+    infoPanel.classList.add('visible');
+    const fb = document.getElementById('fp-btn');
+    if (fb && data.isFP && !data.isSeason) { fb.onclick = e => { e.stopPropagation(); const obj = allClickables.find(o => o.userData?.name === data.name); if (isFP && fpTarget?.userData?.name === data.name) exitFP(); else { if (isFP) exitFP(); if (obj) enterFP(obj); } showInfoPanel(data); }; }
+}
+
+// === 对数速度控制 (0.01 ~ 9999) ===
+// 滑条值 0~100 映射到对数刻度：speed = 10^(slider/25 - 2)
+// slider=0 => 10^(-2)=0.01, slider=50 => 10^(0)=1, slider=100 => 10^(2)=100
+// 手动输入直接设值，超出100时滑条停在100位置
+
+let tS = 1, iP = false, vT = 0;
+
+function sliderToSpeed(val) {
+    return Math.pow(10, val / 25 - 2);
+}
+
+function speedToSlider(speed) {
+    if (speed <= 0) return 0;
+    const v = (Math.log10(speed) + 2) * 25;
+    return Math.max(0, Math.min(100, v));
+}
+
+function updateDisplay(speed) {
+    if (speed < 0.01) speed = 0.01;
+    if (speed > 9999) speed = 9999;
+    timeDisplay.textContent = speed.toFixed(2) + '×';
+    timeInput.value = speed.toFixed(2);
+}
+
+timeSlider.oninput = () => {
+    const speed = sliderToSpeed(parseFloat(timeSlider.value));
+    tS = speed;
+    updateDisplay(speed);
+    if (iP && speed > 0) { iP = false; updateBtn(); }
+    updateBtn();
+};
+
+timeInput.oninput = () => {
+    let v = parseFloat(timeInput.value);
+    if (isNaN(v) || v < 0.01) v = 0.01;
+    if (v > 9999) v = 9999;
+    tS = v;
+    timeSlider.value = speedToSlider(v);
+    updateDisplay(v);
+    if (iP && v > 0) { iP = false; updateBtn(); }
+    updateBtn();
+};
+
+function updateBtn() { btnPause.classList.toggle('act', iP); btnPlay.classList.toggle('act', !iP); }
+btnPause.onclick = () => { iP = true; timeSlider.value = 0; tS = 0; timeInput.value = '0'; timeDisplay.textContent = '0.00×'; updateBtn(); };
+btnPlay.onclick = () => { iP = false; timeSlider.value = 50; tS = 1; timeInput.value = '1'; timeDisplay.textContent = '1.00×'; updateBtn(); };
+
+// 半径滑块
+function buildRadiusSliders() {
+    radiusSliders.innerHTML = '';
+    const items = ['太阳', '地球'], colors = ['#ffcc33', '#5599dd'];
+    items.forEach((name, i) => {
+        const row = document.createElement('div'); row.className = 'sr';
+        const dot = document.createElement('span'); dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${colors[i]};display:inline-block;flex-shrink:0;`;
+        const lb = document.createElement('span'); lb.className = 'sl'; lb.textContent = name;
+        const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0.1; inp.max = 10.0; inp.step = 0.1; inp.value = 1.0;
+        const vl = document.createElement('span'); vl.className = 'sv'; vl.textContent = '1.0';
+        inp.oninput = () => { const v = parseFloat(inp.value); vl.textContent = v.toFixed(1); scaleFactors[name] = v;
+            if (name === '太阳') { sun.scale.set(v, v, v); solarSystemGroup.scale.set(v, v, v); const r = 15 * v; sunLight.shadow.camera.left = -r; sunLight.shadow.camera.right = r; sunLight.shadow.camera.top = r; sunLight.shadow.camera.bottom = -r; sunLight.shadow.camera.updateProjectionMatrix(); }
+            if (name === '地球') { earthTiltGroup.scale.set(v, v, v); } };
+        row.append(dot, lb, inp, vl); radiusSliders.appendChild(row);
+    });
+}
+buildRadiusSliders();
+
+resetRadius.onclick = () => {
+    scaleFactors['太阳'] = 1; sun.scale.set(1, 1, 1); solarSystemGroup.scale.set(1, 1, 1);
+    sunLight.shadow.camera.left = -15; sunLight.shadow.camera.right = 15; sunLight.shadow.camera.top = 15; sunLight.shadow.camera.bottom = -15; sunLight.shadow.camera.updateProjectionMatrix();
+    scaleFactors['地球'] = 1; earthTiltGroup.scale.set(1, 1, 1);
+    document.querySelectorAll('#radius-sliders .sr input').forEach(inp => { inp.value = 1.0; inp.nextSibling.textContent = '1.0'; });
+};
+
+function jumpToSeason(angleRad) {
+    vT = angleRad / 0.3; earthGroup.position.x = Math.cos(angleRad) * BASE_ORBIT_R; earthGroup.position.z = Math.sin(angleRad) * BASE_ORBIT_R;
+    const deg = ((angleRad * 180 / Math.PI) % 360 + 360) % 360; angleText.textContent = deg.toFixed(0) + '°'; dateText.textContent = getSeasonName(angleRad);
+}
+$('jump-spring').onclick = () => jumpToSeason(0); $('jump-summer').onclick = () => jumpToSeason(Math.PI / 2);
+$('jump-autumn').onclick = () => jumpToSeason(Math.PI); $('jump-winter').onclick = () => jumpToSeason(3 * Math.PI / 2);
+
+resetView.onclick = () => { camera.position.set(8, 6, 14); controls.target.set(0, 0, 0); controls.update(); exitFP(); };
+
+let ctrlOpen = false; toggleCtrl.onclick = () => { ctrlOpen = !ctrlOpen; ctrlPanel.classList.toggle('open', ctrlOpen); };
+document.addEventListener('pointerdown', e => { if (ctrlOpen && !ctrlPanel.contains(e.target) && e.target !== toggleCtrl) { ctrlOpen = false; ctrlPanel.classList.remove('open'); } });
+
+function getSeasonName(angle) {
+    const a = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); const eps = 0.15;
+    if (Math.abs(a - 0) < eps || Math.abs(a - 2 * Math.PI) < eps) return '🌸 春分';
+    if (Math.abs(a - Math.PI / 2) < eps) return '☀️ 夏至'; if (Math.abs(a - Math.PI) < eps) return '🍂 秋分';
+    if (Math.abs(a - 3 * Math.PI / 2) < eps) return '❄️ 冬至';
+    if (a > 0 && a < Math.PI / 2) return '春分→夏至'; if (a > Math.PI / 2 && a < Math.PI) return '夏至→秋分';
+    if (a > Math.PI && a < 3 * Math.PI / 2) return '秋分→冬至'; return '冬至→春分';
+}
+
+const clock = new THREE.Clock();
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.15), edt = iP ? 0 : dt * tS;
+    if (!iP) vT += edt;
+    const angle = vT * 0.3;
+    earthGroup.position.x = Math.cos(angle) * BASE_ORBIT_R; earthGroup.position.z = Math.sin(angle) * BASE_ORBIT_R;
+    earth.rotation.y += edt * 0.5;
+    const mA = vT * 2.0; moon.position.x = Math.cos(mA) * 1.2; moon.position.z = Math.sin(mA) * 1.2; moon.rotation.y += edt * 0.8;
+    const iA = vT * 8.0; iss.position.x = Math.cos(iA) * 1.6; iss.position.z = Math.sin(iA) * 1.6; iss.position.y = Math.sin(iA * 2) * 0.15;
+    const tA = vT * 6.0 + 1.2; tiangong.position.x = Math.cos(tA) * 1.4; tiangong.position.z = Math.sin(tA) * 1.4; tiangong.position.y = Math.sin(tA * 2 + 0.5) * 0.12;
+    sun.rotation.y += edt * 0.1;
+    const earthPos = new THREE.Vector3(); earthGroup.getWorldPosition(earthPos);
+    const ld = earthPos.clone().normalize(); sunLight.position.copy(ld.clone().multiplyScalar(-50));
+    sunLight.target.position.copy(earthPos); scene.add(sunLight.target); sunLight.target.updateMatrixWorld();
+    rayLine.geometry.dispose(); rayLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(angle) * BASE_ORBIT_R * 0.8, 0, Math.sin(angle) * BASE_ORBIT_R * 0.8)]);
+    const deg = ((angle * 180 / Math.PI) % 360 + 360) % 360; angleText.textContent = deg.toFixed(0) + '°'; dateText.textContent = getSeasonName(angle);
+    if (isFP && fpTarget) { const tp = new THREE.Vector3(); if (fpTarget.parent === earthTiltGroup || fpTarget.parent === moonOrbit || fpTarget.parent === issGroup || fpTarget.parent === tgGroup) { fpTarget.getWorldPosition(tp); } else { tp.copy(fpTarget.position); } controls.target.lerp(tp, 0.05); }
+    controls.update(); stars.rotation.y += edt * 0.003; renderer.render(scene, camera);
+}
+animate();
+
+window.onresize = () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); };
+window.addEventListener('keydown', e => { if (e.key === ' ' && !e.target.matches('input')) { e.preventDefault(); iP ? btnPlay.click() : btnPause.click(); } if (e.key === 'Escape' && isFP) { exitFP(); infoPanel.classList.remove('visible'); } });
+camera.position.set(8, 6, 14); controls.update();
+console.log('🌍 地球版·对数速度0.01~9999 已启动');
+</script>
+</body>
+</html>
