@@ -186,9 +186,9 @@
 <span class="dot"><span style="background:#ff6688;"></span>ISS</span>
 <span class="dot"><span style="background:#ff4444;"></span>天宫</span>
 <span class="dot"><span style="background:#88dd88;"></span>春分 0°</span>
-<span class="dot"><span style="background:#ff8844;"></span>夏至 90°</span>
+<span class="dot"><span style="background:#ff8844;"></span>夏至 270°</span>
 <span class="dot"><span style="background:#ffdd88;"></span>秋分 180°</span>
-<span class="dot"><span style="background:#88bbff;"></span>冬至 270°</span>
+<span class="dot"><span style="background:#88bbff;"></span>冬至 90°</span>
 </div>
 
 <div id="mobileTip" class="mobile-tip" style="display:none;"><span>📱 推荐使用平板或电脑浏览 🌟</span><button id="closeTip" class="close-tip">✖</button></div>
@@ -208,9 +208,9 @@
 <div class="sec-title">🌐 快速跳转（北半球）</div>
 <div class="time-row"><div class="bg" style="flex-wrap:wrap;gap:4px;">
 <button id="jump-spring">🌸春分 0°</button>
-<button id="jump-summer">☀️夏至 90°</button>
+<button id="jump-summer">☀️夏至 270°</button>
 <button id="jump-autumn">🍂秋分 180°</button>
-<button id="jump-winter">❄️冬至 270°</button>
+<button id="jump-winter">❄️冬至 90°</button>
 </div></div></div>
 <div class="sec">
 <div class="sec-title">🪐 半径倍率</div>
@@ -356,7 +356,7 @@ function getEllipsePosition(theta) {
 let theta = 0;
 const allClickables = [sun];
 
-// ===== 轨道线（只创建一次） =====
+// 轨道线
 function createEllipseOrbit() {
     const pts = [];
     for (let i = 0; i <= 128; i++) {
@@ -371,18 +371,17 @@ function createEllipseOrbit() {
 const orbitLine = createEllipseOrbit();
 scene.add(orbitLine);
 
-// 射线指示线
 const rayLineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)]);
 const rayLine = new THREE.Line(rayLineGeometry, new THREE.LineBasicMaterial({ color: '#ffdd44', transparent: true, opacity: 0.2 }));
 scene.add(rayLine);
 
-// ===== 节气定义（北半球正确角度） =====
+// ===== 节气定义（修正：夏至270°，冬至90°，视觉上夏至在下面，冬至在上面） =====
 const seasonMarkers = [];
 const seasons = [
     { name: '春分', angle: 0, color: '#88dd88', date: '3月20日', desc: '🌱 太阳直射赤道，全球昼夜等长。北半球春季开始，万物复苏。' },
-    { name: '夏至', angle: Math.PI/2, color: '#ff8844', date: '6月21日', desc: '☀️ 太阳直射北回归线(23.5°N)，北半球白昼最长。北极极昼，南极极夜。' },
+    { name: '夏至', angle: 3*Math.PI/2, color: '#ff8844', date: '6月21日', desc: '☀️ 太阳直射北回归线(23.5°N)，北半球白昼最长。北极极昼，南极极夜。' },
     { name: '秋分', angle: Math.PI, color: '#ffdd88', date: '9月22日', desc: '🍂 太阳再次直射赤道，全球昼夜等长。北半球秋季开始，气温渐凉。' },
-    { name: '冬至', angle: 3*Math.PI/2, color: '#88bbff', date: '12月21日', desc: '❄️ 太阳直射南回归线(23.5°S)，北半球白昼最短。北极极夜，南极极昼。' },
+    { name: '冬至', angle: Math.PI/2, color: '#88bbff', date: '12月21日', desc: '❄️ 太阳直射南回归线(23.5°S)，北半球白昼最短。北极极夜，南极极昼。' },
 ];
 
 seasons.forEach(s => {
@@ -426,7 +425,6 @@ loadTex('地球').then(t => { if (t) { earth.material.map = t; earth.material.co
 
 const atmos = new THREE.Mesh(new THREE.SphereGeometry(BASE_EARTH_R * 1.06, 24, 24), new THREE.MeshBasicMaterial({ color: '#88ccff', transparent: true, opacity: 0.12, side: THREE.BackSide })); earth.add(atmos);
 
-// 赤道/回归线
 function createLatitudeCircle(radius, latAngle, color, opacity) {
     const pts = [];
     const r = radius * Math.cos(latAngle);
@@ -456,14 +454,14 @@ const lunarGlow = mkGlow('#ff4422', 3, 0);
 lunarGlow.userData.isGlow = true;
 moon.add(lunarGlow);
 
-// ISS（轨道倾角51.6°）
+// ISS
 const iss = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff6688' }));
 iss.name = 'ISS'; iss.userData = { name: '🛰️ ISS (国际空间站)', type: '空间站', diameter: '109 m', distance: '距地球 ~408 km', temperature: '—', moons: '—', desc: '由15个国家合作建设。轨道倾角51.6°，时速约28,000 km/h。', color: '#ff6688', isSatellite: true, isFP: true };
 const issGroup = new THREE.Group(); earthTiltGroup.add(issGroup);
 issGroup.rotation.x = 51.6 * Math.PI / 180;
 iss.position.set(1.8, 0, 0); issGroup.add(iss); allClickables.push(iss);
 
-// 天宫（轨道倾角41.5°）
+// 天宫
 const tiangong = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff4444' }));
 tiangong.name = '天宫'; tiangong.userData = { name: '🇨🇳 天宫空间站 (中国)', type: '空间站', diameter: '~50 m', distance: '距地球 ~400 km', temperature: '—', moons: '—', desc: '中国自主建造的模块化空间站。轨道倾角41.5°，2022年基本建成。', color: '#ff4444', isSatellite: true, isFP: true };
 const tgGroup = new THREE.Group(); earthTiltGroup.add(tgGroup);
@@ -565,7 +563,7 @@ togMoonphase.onclick = () => { showMoonPhase = !showMoonPhase; togMoonphase.clas
 togGrid.onclick = () => { showGrid = !showGrid; togGrid.classList.toggle('act', showGrid); gridHelper.visible = showGrid; togGrid.textContent = showGrid ? '📐 开' : '📐 关'; };
 togAxis.onclick = () => { showAxis = !showAxis; togAxis.classList.toggle('act', showAxis); axisIndicator.visible = showAxis; axisTop.visible = showAxis; northStar.visible = showAxis; togAxis.textContent = showAxis ? '📏 开' : '📏 关'; };
 
-// 节气跳转动画（平滑过渡）
+// 节气跳转动画
 let isJumping = false;
 function smoothJumpToSeason(targetTheta) {
     if (isJumping) return;
@@ -584,29 +582,29 @@ function smoothJumpToSeason(targetTheta) {
     animateJump();
 }
 
-// ===== 跳转按钮（北半球正确角度） =====
+// ===== 跳转按钮（夏至270°，冬至90°） =====
 $('jump-spring').onclick = () => smoothJumpToSeason(0);
-$('jump-summer').onclick = () => smoothJumpToSeason(Math.PI/2);
+$('jump-summer').onclick = () => smoothJumpToSeason(3*Math.PI/2);
 $('jump-autumn').onclick = () => smoothJumpToSeason(Math.PI);
-$('jump-winter').onclick = () => smoothJumpToSeason(3*Math.PI/2);
+$('jump-winter').onclick = () => smoothJumpToSeason(Math.PI/2);
 
 resetView.onclick = () => { camera.position.set(8, 6, 14); controls.target.set(0, 0, 0); controls.update(); exitFP(); };
 
 let ctrlOpen = false; toggleCtrl.onclick = () => { ctrlOpen = !ctrlOpen; ctrlPanel.classList.toggle('open', ctrlOpen); };
 document.addEventListener('pointerdown', e => { if (ctrlOpen && !ctrlPanel.contains(e.target) && e.target !== toggleCtrl) { ctrlOpen = false; ctrlPanel.classList.remove('open'); } });
 
-// ===== 节气名称判断（北半球正确） =====
+// ===== 节气名称判断（夏至270°，冬至90°） =====
 function getSeasonName(angle) {
     const a = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     const eps = 0.15;
     if (Math.abs(a - 0) < eps || Math.abs(a - 2 * Math.PI) < eps) return '🌸 春分';
-    if (Math.abs(a - Math.PI/2) < eps) return '☀️ 夏至';
+    if (Math.abs(a - 3*Math.PI/2) < eps) return '☀️ 夏至';
     if (Math.abs(a - Math.PI) < eps) return '🍂 秋分';
-    if (Math.abs(a - 3*Math.PI/2) < eps) return '❄️ 冬至';
-    if (a > 0 && a < Math.PI/2) return '🌸 春分→☀️ 夏至';
-    if (a > Math.PI/2 && a < Math.PI) return '☀️ 夏至→🍂 秋分';
-    if (a > Math.PI && a < 3*Math.PI/2) return '🍂 秋分→❄️ 冬至';
-    return '❄️ 冬至→🌸 春分';
+    if (Math.abs(a - Math.PI/2) < eps) return '❄️ 冬至';
+    if (a > 0 && a < Math.PI/2) return '❄️ 冬至→🌸 春分';
+    if (a > Math.PI/2 && a < Math.PI) return '🌸 春分→☀️ 夏至';
+    if (a > Math.PI && a < 3*Math.PI/2) return '☀️ 夏至→🍂 秋分';
+    return '🍂 秋分→❄️ 冬至';
 }
 
 // 模拟日期
@@ -619,9 +617,9 @@ function getSimulatedDate(theta) {
     return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-// 太阳直射纬度（修正）
+// 太阳直射纬度（配合角度互换，加负号保持天文正确）
 function getSolarDeclination(theta) {
-    return 23.5 * Math.sin(theta);
+    return -23.5 * Math.sin(theta);
 }
 
 // 日食/月食检测
@@ -632,28 +630,22 @@ function checkAndApplyEclipse() {
     const sunPos = new THREE.Vector3(0, 0, 0);
     const earthPos = new THREE.Vector3();
     const moonPos = new THREE.Vector3();
-    
     earthGroup.getWorldPosition(earthPos);
     moon.getWorldPosition(moonPos);
-    
     const toSun = new THREE.Vector3().copy(sunPos).sub(earthPos).normalize();
     const toMoon = new THREE.Vector3().copy(moonPos).sub(earthPos).normalize();
     const angleDeg = toSun.angleTo(toMoon) * 180 / Math.PI;
-    
     let newEclipse = null;
-    
     if (angleDeg < 2.5) {
         const distMoon = earthPos.distanceTo(moonPos);
         const distSun = earthPos.length();
         if (distMoon < distSun * 0.5) newEclipse = 'solar';
     }
     if (Math.abs(angleDeg - 180) < 3) newEclipse = 'lunar';
-    
     let tagHtml = '';
     if (newEclipse === 'solar') tagHtml = '<span class="eclipse-tag solar">🌑 日食</span>';
     else if (newEclipse === 'lunar') tagHtml = '<span class="eclipse-tag lunar">🌕 月食</span>';
     eclipseTagContainer.innerHTML = tagHtml;
-    
     if (newEclipse === 'solar') {
         maskSprite.material.opacity = 0.85;
         eclipseOverlay.style.background = 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,10,0.6) 100%)';
@@ -708,7 +700,6 @@ function updateEclipseCountdown() {
     const stepSize = 2 * Math.PI / steps;
     let nextSolarSteps = Infinity, nextLunarSteps = Infinity;
     const testTheta = theta;
-    
     for (let i = 0; i < steps; i++) {
         const t = testTheta + i * stepSize;
         const mA = vT * 2.0 + i * stepSize * 2.0;
@@ -769,20 +760,17 @@ function animate() {
     earthGroup.position.x = pos.x;
     earthGroup.position.z = pos.z;
 
-    // 季节标记跟随椭圆
     seasons.forEach((s, idx) => {
         const sp = getEllipsePosition(s.angle);
         seasonMarkers[idx].position.set(sp.x, 0, sp.z);
         if (seasonMarkers[idx].userData.glow) seasonMarkers[idx].userData.glow.position.set(sp.x, 0.3, sp.z);
     });
 
-    // 射线指示线
     const earthPosWorld = new THREE.Vector3();
     earthGroup.getWorldPosition(earthPosWorld);
     rayLine.geometry.dispose();
     rayLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), earthPosWorld.clone().multiplyScalar(0.8)]);
 
-    // 太阳光
     const lightDir = earthPosWorld.clone().normalize();
     sunLight.position.copy(lightDir.clone().multiplyScalar(-50));
     sunLight.target.position.copy(earthPosWorld);
@@ -838,7 +826,7 @@ animate();
 window.onresize = () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); };
 window.addEventListener('keydown', e => { if (e.key === ' ' && !e.target.matches('input')) { e.preventDefault(); iP ? btnPlay.click() : btnPause.click(); } if (e.key === 'Escape' && isFP) { exitFP(); infoPanel.classList.remove('visible'); } });
 camera.position.set(8, 6, 14); controls.update();
-console.log('🌍 地球版·北半球节气·8大优化 已启动');
+console.log('🌍 地球版·北半球节气·修正夏至/冬至方向 已启动');
 </script>
 </body>
 </html>
