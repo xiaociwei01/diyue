@@ -49,9 +49,22 @@
         #info-card .card-content { line-height: 1.5; } #info-card .card-content p { margin: 4px 0; }
         @media (max-width: 700px) { #info-card { top: 60px; left: 10px; padding: 8px 12px; max-width: 220px; font-size: 0.7rem; } }
 
-        #date-display { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(6, 10, 28, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 5px 18px; font-size: 0.8rem; color: rgba(190, 205, 240, 0.9); pointer-events: none; text-align: center; white-space: nowrap; }
+        #date-display {
+            position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 10;
+            background: rgba(6, 10, 28, 0.75); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px;
+            padding: 6px 20px; font-size: 0.85rem; color: rgba(190, 205, 240, 0.9);
+            pointer-events: none; text-align: center; white-space: nowrap;
+            display: flex; align-items: center; gap: 12px;
+        }
         #date-display .highlight { color: #ffb347; font-weight: 600; }
-        #eclipse-status { color: #ff8844; font-weight: bold; margin-left: 8px; }
+        #date-display .eclipse-tag {
+            padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;
+            animation: eclipsePulse 1.5s ease-in-out infinite;
+        }
+        .eclipse-tag.solar { background: rgba(255, 200, 100, 0.25); color: #ffdd88; border: 1px solid rgba(255, 200, 100, 0.4); }
+        .eclipse-tag.lunar { background: rgba(255, 60, 40, 0.25); color: #ff6644; border: 1px solid rgba(255, 60, 40, 0.4); }
+        @keyframes eclipsePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         #legend { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; pointer-events: none; }
         #legend .dot { display: inline-flex; align-items: center; gap: 3px; font-size: 0.5rem; color: rgba(190, 200, 230, 0.7); background: rgba(6, 10, 28, 0.55); padding: 2px 7px; border-radius: 12px; backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -111,6 +124,35 @@
 
         #tooltip { position: fixed; z-index: 60; pointer-events: none; background: rgba(6, 10, 28, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 6px 14px; font-size: 0.8rem; color: #e4edff; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
         #tooltip.show { opacity: 1; }
+
+        #eclipse-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 8; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0) 100%);
+            transition: all 2s ease;
+        }
+        #eclipse-banner {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 12; pointer-events: none;
+            font-size: 3rem; font-weight: bold;
+            text-align: center; opacity: 0;
+            transition: opacity 1s ease;
+            text-shadow: 0 0 40px rgba(255,200,100,0.5);
+            font-family: 'Segoe UI', sans-serif;
+            letter-spacing: 0.1em;
+        }
+        @media (max-width: 600px) {
+            #eclipse-banner { font-size: 1.8rem !important; }
+            #date-display { font-size: 0.7rem; padding: 4px 12px; gap: 6px; flex-wrap: wrap; top: 54px; }
+        }
+        #eclipse-countdown {
+            position: fixed; bottom: 50px; right: 16px; z-index: 10;
+            background: rgba(6, 10, 28, 0.6); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px;
+            padding: 6px 14px; font-size: 0.6rem; color: rgba(190, 205, 240, 0.5);
+            pointer-events: none; line-height: 1.6;
+        }
+        #eclipse-countdown .cd-hl { color: rgba(255, 180, 60, 0.7); }
     </style>
 </head>
 <body>
@@ -124,12 +166,18 @@
 
 <div id="info-card">
 <div class="card-title">✨ 小刺猬的宇宙工坊 ✨</div>
-<div class="card-content"><p>🌍 地球公转 · 四季演示</p><p>🐳 作者：小刺猬</p><p>🌐 https://xiaociwei01.github.io/diyue/</p></div></div>
+<div class="card-content"><p>🌍 地球公转 · 四季演示 · 月相日食</p><p>🐳 作者：小刺猬</p><p>🌐 回到太阳系 → xiaociwei01.github.io/xiaotaiyang/</p></div></div>
 
 <div id="date-display">
-    📍 <span class="highlight" id="date-text">春分</span> · 公转位置 <span id="angle-text">0°</span>
-    <span id="eclipse-status"></span>
+    <span>📍 <span class="highlight" id="date-text">春分</span></span>
+    <span>🔄 <span id="angle-text">0°</span></span>
+    <span>📅 <span id="sim-date">3月20日</span></span>
+    <span id="eclipse-tag-container"></span>
 </div>
+
+<div id="eclipse-overlay"></div>
+<div id="eclipse-banner"></div>
+<div id="eclipse-countdown">☀️ 下次日食: <span class="cd-hl" id="next-solar">—</span>天<br>🌕 下次月食: <span class="cd-hl" id="next-lunar">—</span>天</div>
 
 <div id="legend">
 <span class="dot"><span style="background:#ffcc33;"></span>太阳</span>
@@ -151,10 +199,10 @@
 <div id="ctrl-panel">
 <div class="pt">🎛️ 控制面板</div>
 <div class="sec">
-<div class="sec-title">⏱ 时间控制 (0.01 ~ 9999×)</div>
+<div class="sec-title">⏱ 时间控制</div>
 <div class="time-row"><span class="lbl">速度</span><input type="range" id="time-speed" min="0" max="100" step="0.1" value="50" style="flex:1;pointer-events:auto;"><span class="val" id="time-display">1.00×</span></div>
 <div class="time-input-row"><span class="lbl">手动</span><input type="number" id="time-input" min="0.01" max="9999" step="0.01" value="1" placeholder="0.01~9999"><span style="font-size:0.65rem;color:rgba(170,185,215,0.5);">×</span></div>
-<div class="time-row"><div class="bg"><button id="btn-pause">⏸</button><button id="btn-play">▶</button></div></div>
+<div class="time-row"><div class="bg"><button id="btn-pause">⏸</button><button id="btn-play">▶</button><button id="btn-10x">10×</button><button id="btn-100x">100×</button></div></div>
 </div>
 <div class="sec">
 <div class="sec-title">🌐 快速跳转</div>
@@ -165,10 +213,15 @@
 <button id="jump-winter">❄️冬至</button>
 </div></div></div>
 <div class="sec">
-<div class="sec-title">🪐 天体半径倍率</div>
+<div class="sec-title">🪐 半径倍率</div>
 <div id="radius-sliders"></div>
-<p style="font-size:0.6rem;color:rgba(170,185,215,0.4);margin-top:6px;">💡 放大太阳 → 轨道和节气同步放大</p>
 <button class="rst-btn danger" id="reset-radius" style="margin-top:8px;">🔄 重置半径倍率</button>
+</div>
+<div class="sec">
+<div class="sec-title">🔘 功能开关</div>
+<div class="time-row"><span class="lbl">月相</span><div class="bg"><button id="tog-moonphase" class="act">🌓 开</button></div></div>
+<div class="time-row"><span class="lbl">网格</span><div class="bg"><button id="tog-grid">📐 关</button></div></div>
+<div class="time-row"><span class="lbl">地轴</span><div class="bg"><button id="tog-axis" class="act">📏 开</button></div></div>
 </div>
 <button class="rst-btn" id="reset-view">🔄 重置视角</button>
 </div>
@@ -185,14 +238,18 @@ const $ = id => document.getElementById(id);
 const infoPanel = $('info-panel'), panelTitle = $('panel-title'), panelBody = $('panel-body'), closeBtn = $('close-panel');
 const toggleCtrl = $('toggle-ctrl'), ctrlPanel = $('ctrl-panel');
 const timeSlider = $('time-speed'), timeDisplay = $('time-display'), timeInput = $('time-input');
-const btnPause = $('btn-pause'), btnPlay = $('btn-play');
+const btnPause = $('btn-pause'), btnPlay = $('btn-play'), btn10x = $('btn-10x'), btn100x = $('btn-100x');
 const tooltip = $('tooltip');
-const dateText = $('date-text'), angleText = $('angle-text'), eclipseStatus = $('eclipse-status');
+const dateText = $('date-text'), angleText = $('angle-text'), simDate = $('sim-date');
+const eclipseTagContainer = $('eclipse-tag-container');
 const loadingOverlay = $('loading-overlay'), loaderBar = $('loader-bar'), loaderSub = $('loader-sub');
 const fpHud = $('fp-hud'), fpHudPlanet = $('fp-hud-planet'), fpExitBtn = $('fp-exit-btn');
 const resetView = $('reset-view'), resetRadius = $('reset-radius');
 const radiusSliders = $('radius-sliders');
 const mobileTip = $('mobileTip'), closeTipBtn = $('closeTip');
+const togMoonphase = $('tog-moonphase'), togGrid = $('tog-grid'), togAxis = $('tog-axis');
+const eclipseOverlay = $('eclipse-overlay'), eclipseBanner = $('eclipse-banner');
+const nextSolarEl = $('next-solar'), nextLunarEl = $('next-lunar');
 if (mobileTip && closeTipBtn) { const u = () => mobileTip.style.display = window.innerWidth < 768 ? 'flex' : 'none'; u(); closeTipBtn.onclick = () => mobileTip.style.display = 'none'; window.addEventListener('resize', u); }
 
 // 场景
@@ -212,27 +269,18 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08; controls.target.set(0, 0, 0);
 controls.minDistance = 3; controls.maxDistance = 120; controls.update();
 
-// 光照（太阳真实光照：方向光始终指向地球）
+// 光照
 const ambientLight = new THREE.AmbientLight('#4466aa', 0.3); scene.add(ambientLight);
 const hemiLight = new THREE.HemisphereLight('#88bbdd', '#224466', 0.4); scene.add(hemiLight);
 const sunLight = new THREE.DirectionalLight('#ffeecc', 3.0);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 40;
-sunLight.shadow.camera.left = -20;
-sunLight.shadow.camera.right = 20;
-sunLight.shadow.camera.top = 20;
-sunLight.shadow.camera.bottom = -20;
-sunLight.shadow.bias = -0.001;
-sunLight.shadow.normalBias = 0.02;
+sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.5; sunLight.shadow.camera.far = 40;
+sunLight.shadow.camera.left = -20; sunLight.shadow.camera.right = 20;
+sunLight.shadow.camera.top = 20; sunLight.shadow.camera.bottom = -20;
+sunLight.shadow.bias = -0.001; sunLight.shadow.normalBias = 0.02;
 scene.add(sunLight);
-// 添加一个辅助对象让DirectionalLight的target更新
-const lightTarget = new THREE.Object3D();
-scene.add(lightTarget);
-sunLight.target = lightTarget;
-
+const lightTarget = new THREE.Object3D(); scene.add(lightTarget); sunLight.target = lightTarget;
 const backFill = new THREE.DirectionalLight('#554433', 0.3); backFill.position.set(-30, -10, -30); scene.add(backFill);
 
 function createStars() {
@@ -260,6 +308,13 @@ async function loadTex(n) {
     catch { loaded++; updL(loaded / total * 100, `加载纹理 ${loaded}/${total} - ${n}(备用)`); return null; }
 }
 
+// ===== 7. 黄道面网格 =====
+const gridHelper = new THREE.GridHelper(16, 16, 0x4488ff, 0x224488);
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.12;
+gridHelper.visible = false;
+scene.add(gridHelper);
+
 // 太阳
 const sun = new THREE.Mesh(new THREE.SphereGeometry(1.5, 48, 48), new THREE.MeshBasicMaterial({ color: '#fffef0' }));
 sun.name = '太阳'; sun.userData = { name: '☀️ 太阳', type: 'G型主序星', diameter: '1,392,700 km', distance: '中心', temperature: '表面 5,500°C', moons: '—', desc: '太阳是太阳系的中心天体，地球绕其公转，形成四季更替。', color: '#ffb833' }; scene.add(sun);
@@ -275,67 +330,34 @@ function mkGlow(c, s, o) {
 }
 [[6, 0.9], [9, 0.5], [13, 0.25]].forEach(([s, o]) => sun.add(mkGlow('#fffef0', s, o)));
 
+// ===== 5. 日食遮罩 =====
+const maskCanvas = document.createElement('canvas'); maskCanvas.width = 256; maskCanvas.height = 256;
+const maskCtx = maskCanvas.getContext('2d');
+const maskGrad = maskCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+maskGrad.addColorStop(0, 'rgba(0,0,0,1)');
+maskGrad.addColorStop(0.5, 'rgba(0,0,0,1)');
+maskGrad.addColorStop(0.7, 'rgba(0,0,0,0.85)');
+maskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+maskCtx.fillStyle = maskGrad; maskCtx.fillRect(0, 0, 256, 256);
+const maskTex = new THREE.CanvasTexture(maskCanvas);
+const maskSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: maskTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.NormalBlending }));
+maskSprite.userData.isGlow = true; maskSprite.scale.set(8, 8, 1); sun.add(maskSprite);
+
 // ===== 开普勒轨道参数 =====
-const a = 6.0;          // 半长轴
-const e = 0.2;          // 离心率 (0.2 视觉效果明显)
-const b = a * Math.sqrt(1 - e * e); // 半短轴
-const period = 1.0;     // 公转周期（相对单位，速度调节会改变时间尺度）
+const a = 6.0;
+const e = 0.2;
+const b = a * Math.sqrt(1 - e * e);
+const period = 1.0;
 
-// 太阳位于焦点 (0,0,0)
-// 地球位置根据真近点角 θ 计算： r = a*(1-e^2)/(1+e*cos(θ))
-// x = r*cos(θ), z = r*sin(θ)
-// 速度变化：角动量守恒，角速度 omega = h / r^2，其中 h = sqrt(GM*a*(1-e^2))
-// 为了简化，使用平均角速度 omega_mean = 2*PI / period，然后利用角动量守恒 omega = omega_mean * (a^2 / r^2)
-// 这样可以自动产生近日点快远日点慢的效果。
-// 注意：我们使用的vT是从0开始的累积时间，但vT本身已经乘以了速度因子，所以直接用它作为平均角速度的时间。
-
-// 季节标记位置也需要映射到椭圆轨道上
 function getEllipsePosition(theta) {
     const r = a * (1 - e * e) / (1 + e * Math.cos(theta));
     return { x: r * Math.cos(theta), z: r * Math.sin(theta), r: r };
 }
 
-// 计算角速度：给定角度theta，平均角速度omega_mean，返回瞬时角速度
-function getAngularVelocity(theta, omega_mean) {
-    const r = a * (1 - e * e) / (1 + e * Math.cos(theta));
-    return omega_mean * (a * a) / (r * r);
-}
+let theta = 0;
+const allClickables = [sun];
 
-// 初始角度：春分在0°
-let theta = 0; // 真近点角
-
-// 更新地球位置
-function updateEarthPosition(theta, scale = 1) {
-    const pos = getEllipsePosition(theta);
-    earthGroup.position.x = pos.x * scale;
-    earthGroup.position.z = pos.z * scale;
-    return pos.r;
-}
-
-// 季节标记的位置也随椭圆更新
-function updateSeasonMarkers(scale = 1) {
-    const seasonAngles = [0, 3*Math.PI/2, Math.PI, Math.PI/2];
-    const colors = ['#88dd88', '#ff8844', '#ffdd88', '#88bbff'];
-    seasonMarkers.forEach((marker, idx) => {
-        const ang = seasonAngles[idx];
-        const pos = getEllipsePosition(ang);
-        marker.position.set(pos.x * scale, 0, pos.z * scale);
-        // 更新发光光晕位置
-        const glow = marker.userData.glow;
-        if (glow) glow.position.set(pos.x * scale, 0.3, pos.z * scale);
-    });
-}
-
-// 存储季节标记的引用以便更新
-const seasonMarkers = [];
-const seasons = [
-    { name: '春分', angle: 0, color: '#88dd88', date: '3月20日', desc: '太阳直射赤道，全球昼夜等长。北半球进入春季，万物复苏。' },
-    { name: '夏至', angle: 3*Math.PI/2, color: '#ff8844', date: '6月21日', desc: '太阳直射北回归线（23.5°N），北半球白昼最长。北极圈内出现极昼，南极圈内出现极夜。北半球夏季开始。' },
-    { name: '秋分', angle: Math.PI, color: '#ffdd88', date: '9月22日', desc: '太阳再次直射赤道，全球昼夜等长。北半球进入秋季，气温渐凉。' },
-    { name: '冬至', angle: Math.PI/2, color: '#88bbff', date: '12月21日', desc: '太阳直射南回归线（23.5°S），北半球白昼最短。北极圈内出现极夜，南极圈内出现极昼。北半球冬季开始。' },
-];
-
-// 重新创建轨道线（椭圆）
+// ===== 1. 轨道线（只创建一次！不再每帧重建） =====
 function createEllipseOrbit(scale = 1) {
     const pts = [];
     for (let i = 0; i <= 128; i++) {
@@ -347,9 +369,21 @@ function createEllipseOrbit(scale = 1) {
     const mat = new THREE.LineBasicMaterial({ color: '#88ccff', transparent: true, opacity: 0.4 });
     return new THREE.Line(geo, mat);
 }
-let orbitLine;
+const orbitLine = createEllipseOrbit(1);
+scene.add(orbitLine);
 
-// 创建季节标记
+// 射线指示线
+const rayLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)]), new THREE.LineBasicMaterial({ color: '#ffdd44', transparent: true, opacity: 0.2 }));
+scene.add(rayLine);
+
+const seasonMarkers = [];
+const seasons = [
+    { name: '春分', angle: 0, color: '#88dd88', date: '3月20日', desc: '太阳直射赤道，全球昼夜等长。北半球进入春季，万物复苏。' },
+    { name: '夏至', angle: 3*Math.PI/2, color: '#ff8844', date: '6月21日', desc: '太阳直射北回归线（23.5°N），北半球白昼最长。北极圈内出现极昼，南极圈内出现极夜。北半球夏季开始。' },
+    { name: '秋分', angle: Math.PI, color: '#ffdd88', date: '9月22日', desc: '太阳再次直射赤道，全球昼夜等长。北半球进入秋季，气温渐凉。' },
+    { name: '冬至', angle: Math.PI/2, color: '#88bbff', date: '12月21日', desc: '太阳直射南回归线（23.5°S），北半球白昼最短。北极圈内出现极夜，南极圈内出现极昼。北半球冬季开始。' },
+];
+
 seasons.forEach(s => {
     const pos = getEllipsePosition(s.angle);
     const marker = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: s.color }));
@@ -362,60 +396,95 @@ seasons.forEach(s => {
     scene.add(marker); scene.add(glow); seasonMarkers.push(marker);
 });
 
-orbitLine = createEllipseOrbit(1);
-scene.add(orbitLine);
-
-// 射线指示线（从太阳到地球）
-const rayLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)]), new THREE.LineBasicMaterial({ color: '#ffdd44', transparent: true, opacity: 0.2 }));
-scene.add(rayLine);
-
-// 其余天体（地球、月球、空间站等）
-const BASE_ORBIT_R = a;
+// 地球系统
 const BASE_EARTH_R = 0.6;
 const AXIAL_TILT = 23.5 * Math.PI / 180;
-const allClickables = [sun];
-const solarSystemGroup = new THREE.Group(); scene.add(solarSystemGroup);
-const earthGroup = new THREE.Group(); solarSystemGroup.add(earthGroup);
+const earthGroup = new THREE.Group(); scene.add(earthGroup);
 const earthTiltGroup = new THREE.Group(); earthGroup.add(earthTiltGroup);
 earthTiltGroup.rotation.x = AXIAL_TILT;
 
+// ===== 6. 地轴指示器 =====
+const axisIndicator = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, -BASE_EARTH_R * 2, 0),
+        new THREE.Vector3(0, BASE_EARTH_R * 2, 0)
+    ]),
+    new THREE.LineBasicMaterial({ color: '#ffdd88', transparent: true, opacity: 0.5, linewidth: 2 })
+);
+earthTiltGroup.add(axisIndicator);
+// 轴顶端小箭头
+const axisTop = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 8), new THREE.MeshBasicMaterial({ color: '#ffdd88' }));
+axisTop.position.set(0, BASE_EARTH_R * 2, 0); earthTiltGroup.add(axisTop);
+// 北极星标记
+const northStar = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
+northStar.position.set(0, BASE_EARTH_R * 2.5, 0); earthTiltGroup.add(northStar);
+
 const earth = new THREE.Mesh(new THREE.SphereGeometry(BASE_EARTH_R, 48, 48), new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.05, color: '#5599dd', emissive: new THREE.Color(0x000000) }));
 earth.name = '地球'; earth.userData = { name: '🌍 地球', type: '岩石行星', diameter: '12,742 km', distance: '1.496亿 km', temperature: '-89°C ~ 57°C', moons: '1 (月球)', desc: '地球是太阳系中唯一已知存在生命的行星。自转轴倾斜23.5°，形成了四季更替。', color: '#5599dd', isFP: true };
-earth.castShadow = true;
-earth.receiveShadow = true;
+earth.castShadow = true; earth.receiveShadow = true;
 earthTiltGroup.add(earth); allClickables.push(earth);
 loadTex('地球').then(t => { if (t) { earth.material.map = t; earth.material.color.set('#ffffff'); earth.material.needsUpdate = true; } });
 
+// 大气层
 const atmos = new THREE.Mesh(new THREE.SphereGeometry(BASE_EARTH_R * 1.06, 24, 24), new THREE.MeshBasicMaterial({ color: '#88ccff', transparent: true, opacity: 0.12, side: THREE.BackSide })); earth.add(atmos);
-const axisPts = [new THREE.Vector3(0, -BASE_EARTH_R * 1.5, 0), new THREE.Vector3(0, BASE_EARTH_R * 1.5, 0)];
-const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPts); earthTiltGroup.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: '#ffdd88', transparent: true, opacity: 0.4 })));
-const ac = new THREE.Mesh(new THREE.RingGeometry(BASE_EARTH_R * 0.65, BASE_EARTH_R * 0.7, 32), new THREE.MeshBasicMaterial({ color: '#88ddff', transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
-ac.rotation.x = -Math.PI / 2; ac.position.y = BASE_EARTH_R * 0.4; earthTiltGroup.add(ac);
-const anc = new THREE.Mesh(new THREE.RingGeometry(BASE_EARTH_R * 0.65, BASE_EARTH_R * 0.7, 32), new THREE.MeshBasicMaterial({ color: '#88ddff', transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
-anc.rotation.x = -Math.PI / 2; anc.position.y = -BASE_EARTH_R * 0.4; earthTiltGroup.add(anc);
 
+// 月球
 const moonOrbit = new THREE.Group(); earthTiltGroup.add(moonOrbit);
-const moon = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 24), new THREE.MeshStandardMaterial({ roughness: 0.8, color: '#c8c4be', emissive: new THREE.Color(0x000000) }));
+const moon = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 32), new THREE.MeshStandardMaterial({ roughness: 0.8, color: '#c8c4be', emissive: new THREE.Color(0x000000) }));
 moon.position.set(1.2, 0, 0);
 moon.name = '月球'; moon.userData = { name: '🌙 月球', type: '天然卫星', diameter: '3,474 km', distance: '距地球 38.4万 km', temperature: '-233°C ~ 123°C', moons: '—', desc: '月球是地球唯一的天然卫星，对地球的潮汐和轴倾角稳定起着关键作用。', color: '#c8c4be', isSatellite: true, isFP: true };
-moon.castShadow = true;
-moon.receiveShadow = true;
+moon.castShadow = true; moon.receiveShadow = true;
 moonOrbit.add(moon); allClickables.push(moon);
 loadTex('月球').then(t => { if (t) { moon.material.map = t; moon.material.needsUpdate = true; } });
 
+// 2. 月食红色光晕
+const lunarGlow = mkGlow('#ff4422', 3, 0);
+lunarGlow.userData.isGlow = true;
+moon.add(lunarGlow);
+
+// 6. ISS（带轨道倾角51.6°）
 const iss = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff6688' }));
-iss.name = 'ISS (国际空间站)'; iss.userData = { name: '🛰️ ISS (国际空间站)', type: '空间站', diameter: '109 m', distance: '距地球 ~408 km', temperature: '—', moons: '—', desc: '国际空间站是由15个国家合作建设的近地轨道空间设施。时速约28,000 km/h，每90分钟绕地球一圈。', color: '#ff6688', isSatellite: true, isFP: true };
-const issGroup = new THREE.Group(); earthTiltGroup.add(issGroup); iss.position.set(1.6, 0.2, 0); issGroup.add(iss); allClickables.push(iss);
+iss.name = 'ISS (国际空间站)'; iss.userData = { name: '🛰️ ISS (国际空间站)', type: '空间站', diameter: '109 m', distance: '距地球 ~408 km', temperature: '—', moons: '—', desc: '国际空间站是由15个国家合作建设的近地轨道空间设施。轨道倾角51.6°，时速约28,000 km/h。', color: '#ff6688', isSatellite: true, isFP: true };
+const issGroup = new THREE.Group(); earthTiltGroup.add(issGroup);
+issGroup.rotation.x = 51.6 * Math.PI / 180; // 轨道倾角！
+iss.position.set(1.8, 0, 0); issGroup.add(iss); allClickables.push(iss);
 
+// 6. 天宫空间站（带轨道倾角41.5°）
 const tiangong = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: '#ff4444' }));
-tiangong.name = '天宫空间站 (中国)'; tiangong.userData = { name: '🇨🇳 天宫空间站 (中国)', type: '空间站', diameter: '~50 m', distance: '距地球 ~400 km', temperature: '—', moons: '—', desc: '天宫空间站是中国自主建造的模块化空间站。2022年基本建成，设计寿命10年以上。', color: '#ff4444', isSatellite: true, isFP: true };
-const tgGroup = new THREE.Group(); earthTiltGroup.add(tgGroup); tiangong.position.set(1.4, -0.15, 0); tgGroup.add(tiangong); allClickables.push(tiangong);
+tiangong.name = '天宫空间站 (中国)'; tiangong.userData = { name: '🇨🇳 天宫空间站 (中国)', type: '空间站', diameter: '~50 m', distance: '距地球 ~400 km', temperature: '—', moons: '—', desc: '天宫空间站是中国自主建造的模块化空间站。轨道倾角41.5°，2022年基本建成。', color: '#ff4444', isSatellite: true, isFP: true };
+const tgGroup = new THREE.Group(); earthTiltGroup.add(tgGroup);
+tgGroup.rotation.x = 41.5 * Math.PI / 180; // 轨道倾角！
+tiangong.position.set(2.0, 0, 0); tgGroup.add(tiangong); allClickables.push(tiangong);
 
-// 加载完成后隐藏loading
+// ===== 3. 太阳直射点标记 =====
+// 在地球上标记赤道和回归线
+function createLatitudeCircle(radius, latAngle, color, opacity) {
+    const pts = [];
+    const r = radius * Math.cos(latAngle);
+    const y = radius * Math.sin(latAngle);
+    for (let i = 0; i <= 64; i++) {
+        const a = (i / 64) * Math.PI * 2;
+        pts.push(new THREE.Vector3(r * Math.cos(a), y, r * Math.sin(a)));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+    return new THREE.Line(geo, mat);
+}
+// 赤道
+const equatorLine = createLatitudeCircle(BASE_EARTH_R + 0.002, 0, 0xffdd44, 0.4);
+earth.add(equatorLine);
+// 北回归线 23.5°
+const tropicNorth = createLatitudeCircle(BASE_EARTH_R + 0.002, 23.5 * Math.PI / 180, 0xff8844, 0.25);
+earth.add(tropicNorth);
+// 南回归线 23.5°
+const tropicSouth = createLatitudeCircle(BASE_EARTH_R + 0.002, -23.5 * Math.PI / 180, 0x88bbff, 0.25);
+earth.add(tropicSouth);
+
+// 加载
 const lt = setInterval(() => { if (loaded >= total) { clearInterval(lt); updL(100, '加载完成！'); setTimeout(() => loadingOverlay.classList.add('hidden'), 500); } }, 200);
 setTimeout(() => { clearInterval(lt); loadingOverlay.classList.add('hidden'); }, 8000);
 
-// 射线检测 (保持不变)
+// 交互
 const raycaster = new THREE.Raycaster(), mouseVec = new THREE.Vector2();
 let mDown = new THREE.Vector2(), mUp = new THREE.Vector2(), isDragging = false;
 function getHits(e) { mouseVec.x = e.clientX / innerWidth * 2 - 1; mouseVec.y = -(e.clientY / innerHeight) * 2 + 1; raycaster.setFromCamera(mouseVec, camera); return raycaster.intersectObjects(allClickables, true).filter(h => { let o = h.object; while (o) { if (o.userData?.isGlow) return false; o = o.parent; } return true; }); }
@@ -428,7 +497,6 @@ renderer.domElement.addEventListener('touchstart', e => { if (e.touches.length =
 renderer.domElement.addEventListener('touchend', e => { if (!isDragging && e.changedTouches.length === 1) { const t = e.changedTouches[0]; if (mDown.distanceTo(new THREE.Vector2(t.clientX, t.clientY)) < 8) { const h = topObj(getHits({ clientX: t.clientX, clientY: t.clientY })); if (h) showInfoPanel(h.userData); } } });
 closeBtn.addEventListener('click', () => infoPanel.classList.remove('visible'));
 
-// 第一视角（不变）
 let isFP = false, fpTarget = null, fpSP = null, fpST = null;
 function enterFP(obj) { if (isFP) return; fpTarget = obj; fpSP = camera.position.clone(); fpST = controls.target.clone(); isFP = true; controls.enabled = false; fpHudPlanet.textContent = obj.userData.name.replace(/[🛰️🇨🇳🌙☀️🌍]/g, '').trim(); fpHud.classList.add('show'); infoPanel.classList.remove('visible'); document.body.classList.add('fp-mode'); const p = obj.position.clone(); let sz = 0.5; if (obj.geometry?.parameters?.radius) sz = obj.geometry.parameters.radius; if (sz < 0.05) sz = 0.5; const o = new THREE.Vector3(sz * 4 + 1, sz * 2, sz * 4 + 1); camera.position.copy(p.clone().add(o)); controls.target.copy(p); controls.update(); setTimeout(() => { controls.enabled = true; controls.minDistance = Math.max(0.3, sz * 0.5); controls.maxDistance = sz * 10 + 3; }, 300); }
 function exitFP() { if (!isFP) return; isFP = false; fpTarget = null; fpHud.classList.remove('show'); document.body.classList.remove('fp-mode'); controls.enabled = true; controls.minDistance = 3; controls.maxDistance = 120; if (fpSP) { camera.position.copy(fpSP); controls.target.copy(fpST); controls.update(); } }
@@ -445,8 +513,8 @@ function showInfoPanel(data) {
     if (fb && data.isFP && !data.isSeason) { fb.onclick = e => { e.stopPropagation(); const obj = allClickables.find(o => o.userData?.name === data.name); if (isFP && fpTarget?.userData?.name === data.name) exitFP(); else { if (isFP) exitFP(); if (obj) enterFP(obj); } showInfoPanel(data); }; }
 }
 
-// 时间控制（对数映射）
-let tS = 1, iP = false, vT = 0; // vT是累计时间（平均角速度的时间积分）
+// 时间控制
+let tS = 1, iP = false, vT = 0;
 
 function sliderToSpeed(val) { return Math.pow(10, val / 25 - 2); }
 function speedToSlider(speed) { if (speed <= 0) return 0; const v = (Math.log10(speed) + 2) * 25; return Math.max(0, Math.min(100, v)); }
@@ -473,8 +541,11 @@ timeInput.addEventListener('input', () => {
 function updateBtn() { btnPause.classList.toggle('act', iP); btnPlay.classList.toggle('act', !iP); }
 btnPause.onclick = () => { iP = true; timeSlider.value = 0; tS = 0; timeInput.value = '0'; timeDisplay.textContent = '0.00×'; updateBtn(); };
 btnPlay.onclick = () => { iP = false; timeSlider.value = 50; tS = 1; timeInput.value = '1'; timeDisplay.textContent = '1.00×'; updateBtn(); };
+btn10x.onclick = () => { iP = false; tS = 10; timeSlider.value = speedToSlider(10); timeInput.value = '10'; timeDisplay.textContent = '10.00×'; updateBtn(); };
+btn100x.onclick = () => { iP = false; tS = 100; timeSlider.value = speedToSlider(100); timeInput.value = '100'; timeDisplay.textContent = '100.00×'; updateBtn(); };
 
 // 半径滑块
+const scaleFactors = { '太阳': 1, '地球': 1 };
 function buildRadiusSliders() {
     radiusSliders.innerHTML = '';
     const items = ['太阳', '地球'], colors = ['#ffcc33', '#5599dd'];
@@ -485,12 +556,11 @@ function buildRadiusSliders() {
         const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0.1; inp.max = 10.0; inp.step = 0.1; inp.value = 1.0;
         const vl = document.createElement('span'); vl.className = 'sv'; vl.textContent = '1.0';
         inp.oninput = () => { const v = parseFloat(inp.value); vl.textContent = v.toFixed(1); scaleFactors[name] = v;
-            if (name === '太阳') { sun.scale.set(v, v, v); /* 缩放轨道整体？不，轨道不变，但季节标记和轨道线不变。 */ }
+            if (name === '太阳') { sun.scale.set(v, v, v); }
             if (name === '地球') { earthTiltGroup.scale.set(v, v, v); } };
         row.append(dot, lb, inp, vl); radiusSliders.appendChild(row);
     });
 }
-const scaleFactors = { '太阳': 1, '地球': 1 };
 buildRadiusSliders();
 
 resetRadius.onclick = () => {
@@ -499,20 +569,36 @@ resetRadius.onclick = () => {
     document.querySelectorAll('#radius-sliders .sr input').forEach(inp => { inp.value = 1.0; inp.nextSibling.textContent = '1.0'; });
 };
 
-// 跳转至节气（角度）
-function jumpToSeason(angleRad) {
-    theta = angleRad;
-    vT = angleRad / 0.3; // 保持一致性
-    const pos = getEllipsePosition(theta);
-    earthGroup.position.set(pos.x, 0, pos.z);
-    const deg = ((theta * 180 / Math.PI) % 360 + 360) % 360;
-    angleText.textContent = deg.toFixed(0) + '°';
-    dateText.textContent = getSeasonName(theta);
+// 功能开关
+let showMoonPhase = true, showGrid = false, showAxis = true;
+togMoonphase.onclick = () => { showMoonPhase = !showMoonPhase; togMoonphase.classList.toggle('act', showMoonPhase); togMoonphase.textContent = showMoonPhase ? '🌓 开' : '🌑 关'; };
+togGrid.onclick = () => { showGrid = !showGrid; togGrid.classList.toggle('act', showGrid); gridHelper.visible = showGrid; togGrid.textContent = showGrid ? '📐 开' : '📐 关'; };
+togAxis.onclick = () => { showAxis = !showAxis; togAxis.classList.toggle('act', showAxis); axisIndicator.visible = showAxis; axisTop.visible = showAxis; northStar.visible = showAxis; togAxis.textContent = showAxis ? '📏 开' : '📏 关'; };
+
+// ===== 8. 节气跳转动画（平滑过渡） =====
+let isJumping = false;
+function smoothJumpToSeason(targetTheta) {
+    if (isJumping) return;
+    isJumping = true;
+    const startTheta = theta;
+    const startTime = performance.now();
+    const duration = 1500;
+    
+    function animateJump() {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        theta = startTheta + (targetTheta - startTheta) * ease;
+        if (t < 1) requestAnimationFrame(animateJump);
+        else isJumping = false;
+    }
+    animateJump();
 }
-$('jump-spring').onclick = () => jumpToSeason(0);
-$('jump-summer').onclick = () => jumpToSeason(3 * Math.PI / 2);
-$('jump-autumn').onclick = () => jumpToSeason(Math.PI);
-$('jump-winter').onclick = () => jumpToSeason(Math.PI / 2);
+
+$('jump-spring').onclick = () => smoothJumpToSeason(0);
+$('jump-summer').onclick = () => smoothJumpToSeason(3 * Math.PI / 2);
+$('jump-autumn').onclick = () => smoothJumpToSeason(Math.PI);
+$('jump-winter').onclick = () => smoothJumpToSeason(Math.PI / 2);
 
 resetView.onclick = () => { camera.position.set(8, 6, 14); controls.target.set(0, 0, 0); controls.update(); exitFP(); };
 
@@ -531,46 +617,179 @@ function getSeasonName(angle) {
     return '秋分→冬至';
 }
 
-// ===== 日食/月食检测 =====
-function checkEclipse() {
-    // 获取太阳、地球、月球的世界坐标
+// ===== 4. 模拟日期 =====
+function getSimulatedDate(theta) {
+    const dayOfYear = ((theta / (2 * Math.PI)) * 365.25) % 365.25;
+    const startDay = 79;
+    const currentDay = (startDay + dayOfYear) % 365.25;
+    const date = new Date(2025, 0, 1);
+    date.setDate(date.getDate() + Math.floor(currentDay));
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+// ===== 3. 太阳直射纬度 =====
+function getSolarDeclination(theta) {
+    return 23.5 * Math.sin(theta - Math.PI / 2);
+}
+
+// ===== 5. 日食/月食检测（优化版） =====
+let isEclipsing = false;
+let eclipseType = null;
+let eclipseLastFrame = null;
+
+function checkAndApplyEclipse() {
     const sunPos = new THREE.Vector3(0, 0, 0);
-    const earthPos = new THREE.Vector3(); earthGroup.getWorldPosition(earthPos);
-    const moonPos = new THREE.Vector3(); moon.getWorldPosition(moonPos);
-    // 计算太阳-地球-月球夹角（以地球为顶点）
+    const earthPos = new THREE.Vector3();
+    const moonPos = new THREE.Vector3();
+    
+    earthGroup.getWorldPosition(earthPos);
+    moon.getWorldPosition(moonPos);
+    
     const toSun = new THREE.Vector3().copy(sunPos).sub(earthPos).normalize();
     const toMoon = new THREE.Vector3().copy(moonPos).sub(earthPos).normalize();
-    const angle = toSun.angleTo(toMoon);
-    const angleDeg = angle * 180 / Math.PI;
-    // 阈值：日食约0~5°，月食约175~180°
-    const eclipseThreshold = 3.0; // 度
-    const lunarEclipseThreshold = 3.0;
-    const isSolarEclipse = (angleDeg < eclipseThreshold) || (angleDeg > 180 - eclipseThreshold);
-    const isLunarEclipse = (angleDeg > 175) || (angleDeg < 5); // 月食: 月球在太阳对面
-    // 简化判断：如果太阳-地球-月球几乎共线，并且月球在地球与太阳之间（日食）或地球在太阳和月球之间（月食）
-    // 更准确：检测月球是否在太阳-地球连线上，且距离地球较近。
-    // 简易：只用角度判断，并配合距离
-    const distMoonEarth = earthPos.distanceTo(moonPos);
-    if (isSolarEclipse) {
-        // 日食：月球在太阳和地球之间，且月球距地球较近（相对于太阳距离）
-        const distSunEarth = earthPos.length();
-        if (distMoonEarth < distSunEarth * 0.5) {
-            return 'solar';
+    const angleDeg = toSun.angleTo(toMoon) * 180 / Math.PI;
+    
+    let newEclipse = null;
+    
+    // 日食：月球在太阳和地球之间（夹角≈0°）
+    if (angleDeg < 2.5) {
+        const distMoon = earthPos.distanceTo(moonPos);
+        const distSun = earthPos.length();
+        if (distMoon < distSun * 0.5) newEclipse = 'solar';
+    }
+    
+    // 月食：地球在太阳和月球之间（夹角≈180°）
+    if (Math.abs(angleDeg - 180) < 3) newEclipse = 'lunar';
+    
+    // 日食/月食标签
+    let tagHtml = '';
+    if (newEclipse === 'solar') tagHtml = '<span class="eclipse-tag solar">🌑 日食</span>';
+    else if (newEclipse === 'lunar') tagHtml = '<span class="eclipse-tag lunar">🌕 月食</span>';
+    eclipseTagContainer.innerHTML = tagHtml;
+    
+    // 应用视觉效果
+    if (newEclipse === 'solar') {
+        maskSprite.material.opacity = 0.85;
+        eclipseOverlay.style.background = 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,10,0.6) 100%)';
+        eclipseBanner.textContent = '🌑 日 食';
+        eclipseBanner.style.color = '#ffdd88';
+        eclipseBanner.style.opacity = '1';
+        eclipseBanner.style.textShadow = '0 0 60px rgba(255,200,100,0.6)';
+        moon.material.color.setHex(0x222222);
+        moon.material.emissive.setHex(0x000000);
+        lunarGlow.material.opacity = 0;
+        ambientLight.intensity = 0.15;
+        hemiLight.intensity = 0.2;
+        isEclipsing = true;
+        eclipseType = 'solar';
+        
+    } else if (newEclipse === 'lunar') {
+        maskSprite.material.opacity = 0;
+        moon.material.color.setHex(0xcc4422);
+        moon.material.emissive.setHex(0x552211);
+        moon.material.emissiveIntensity = 0.5;
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
+        lunarGlow.material.opacity = 0.3 + 0.4 * pulse;
+        lunarGlow.scale.set(5, 5, 1);
+        eclipseOverlay.style.background = 'radial-gradient(ellipse at center, rgba(80,20,10,0.15) 40%, rgba(40,10,5,0.4) 100%)';
+        eclipseBanner.textContent = '🌕 血 月 · 月 食';
+        eclipseBanner.style.color = '#ff6644';
+        eclipseBanner.style.opacity = '1';
+        eclipseBanner.style.textShadow = '0 0 60px rgba(255,60,30,0.6)';
+        ambientLight.intensity = 0.25;
+        hemiLight.intensity = 0.3;
+        isEclipsing = true;
+        eclipseType = 'lunar';
+        
+    } else {
+        if (isEclipsing) {
+            maskSprite.material.opacity = 0;
+            moon.material.color.setHex(0xc8c4be);
+            moon.material.emissive.setHex(0x000000);
+            moon.material.emissiveIntensity = 0;
+            lunarGlow.material.opacity = 0;
+            eclipseOverlay.style.background = 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0) 100%)';
+            eclipseBanner.style.opacity = '0';
+            ambientLight.intensity = 0.3;
+            hemiLight.intensity = 0.4;
+            isEclipsing = false;
+            eclipseType = null;
         }
     }
-    if (isLunarEclipse) {
-        // 月食：地球在太阳和月球之间，月球距地球远
-        const distSunEarth = earthPos.length();
-        if (distMoonEarth > distSunEarth * 0.3) {
-            return 'lunar';
-        }
+    eclipseLastFrame = newEclipse;
+}
+
+// ===== 日食/月食倒计时预测 =====
+function updateEclipseCountdown() {
+    // 粗略预测：扫描未来角度变化
+    const steps = 360;
+    const stepSize = 2 * Math.PI / steps;
+    let nextSolarSteps = Infinity, nextLunarSteps = Infinity;
+    
+    const testTheta = theta;
+    const testMoonAngle = vT * 2.0;
+    
+    for (let i = 0; i < steps; i++) {
+        const t = testTheta + i * stepSize;
+        const mA = testMoonAngle + i * stepSize * 2.0; // 月球走得快
+        const moonX = Math.cos(mA) * 1.2;
+        const moonZ = Math.sin(mA) * 1.2;
+        
+        const earthPos = new THREE.Vector3(getEllipsePosition(t).x, 0, getEllipsePosition(t).z);
+        const moonPos = new THREE.Vector3(moonX, 0, moonZ).add(earthPos);
+        const sunPos = new THREE.Vector3(0, 0, 0);
+        
+        const toSun = new THREE.Vector3().copy(sunPos).sub(earthPos).normalize();
+        const toMoon = new THREE.Vector3().copy(moonPos).sub(earthPos).normalize();
+        const angleDeg = toSun.angleTo(toMoon) * 180 / Math.PI;
+        
+        if (angleDeg < 2.5 && i > 5) { nextSolarSteps = Math.min(nextSolarSteps, i); }
+        if (Math.abs(angleDeg - 180) < 3 && i > 5) { nextLunarSteps = Math.min(nextLunarSteps, i); }
     }
-    return null;
+    
+    const daysPerStep = 365.25 / steps;
+    if (nextSolarSteps < Infinity) nextSolarEl.textContent = (nextSolarSteps * daysPerStep).toFixed(0);
+    else nextSolarEl.textContent = '—';
+    if (nextLunarSteps < Infinity) nextLunarEl.textContent = (nextLunarSteps * daysPerStep).toFixed(0);
+    else nextLunarEl.textContent = '—';
+}
+
+// ===== 2. 月相更新 =====
+function updateMoonPhase() {
+    if (!showMoonPhase) {
+        moon.material.emissive.setHex(0x000000);
+        return;
+    }
+    const sunPos = new THREE.Vector3(0, 0, 0);
+    const earthPos = new THREE.Vector3();
+    const moonPos = new THREE.Vector3();
+    
+    earthGroup.getWorldPosition(earthPos);
+    moon.getWorldPosition(moonPos);
+    
+    const moonToEarth = new THREE.Vector3().copy(earthPos).sub(moonPos).normalize();
+    const moonToSun = new THREE.Vector3().copy(sunPos).sub(moonPos).normalize();
+    const phaseAngle = moonToEarth.angleTo(moonToSun);
+    
+    // 0°=新月(全黑), 90°=上弦月(半亮), 180°=满月(全亮)
+    const brightness = (1 + Math.cos(phaseAngle)) / 2;
+    
+    // 用emissive模拟被照亮的部分
+    const emissionStrength = 0.15 + brightness * 0.35;
+    moon.material.emissive.setHSL(0.08, 0.15, emissionStrength);
+    moon.material.emissiveIntensity = 1.0;
+    
+    // 非日食/月食时，基础颜色随月相变化
+    if (!isEclipsing) {
+        const baseBright = 0.4 + brightness * 0.6;
+        moon.material.color.setHSL(0.08, 0.05, baseBright);
+    }
+    moon.material.needsUpdate = true;
 }
 
 // 动画循环
 const clock = new THREE.Clock();
-let avgOmega = 2 * Math.PI / period; // 平均角速度
+let avgOmega = 2 * Math.PI / period;
 
 function animate() {
     requestAnimationFrame(animate);
@@ -578,13 +797,11 @@ function animate() {
     const edt = iP ? 0 : dt * tS;
     if (!iP) vT += edt;
 
-    // 更新真近点角 theta（使用开普勒第二定律）
-    if (!iP) {
-        // 当前距离和角速度
+    // 更新真近点角（开普勒第二定律）
+    if (!iP && !isJumping) {
         const currentR = a * (1 - e * e) / (1 + e * Math.cos(theta));
         const omega = avgOmega * (a * a) / (currentR * currentR);
         theta += omega * edt;
-        // 确保theta在0~2PI内
         theta = ((theta % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     }
 
@@ -592,30 +809,26 @@ function animate() {
     const pos = getEllipsePosition(theta);
     earthGroup.position.x = pos.x;
     earthGroup.position.z = pos.z;
+    
     // 更新季节标记位置
-    updateSeasonMarkers(1);
+    seasons.forEach((s, idx) => {
+        const sp = getEllipsePosition(s.angle);
+        seasonMarkers[idx].position.set(sp.x, 0, sp.z);
+        const glow = seasonMarkers[idx].userData.glow;
+        if (glow) glow.position.set(sp.x, 0.3, sp.z);
+    });
 
-    // 更新轨道线（保持椭圆）
-    // 轨道线更新较频繁，可以每帧重新生成，但为了性能，可考虑仅在缩放改变时更新，此处简单重建
-    if (orbitLine) {
-        scene.remove(orbitLine);
-        orbitLine.geometry.dispose();
-        orbitLine.material.dispose();
-        orbitLine = createEllipseOrbit(1);
-        scene.add(orbitLine);
-    }
-
-    // 更新太阳光指向地球
+    // 更新射线指示线
     const earthPosWorld = new THREE.Vector3();
     earthGroup.getWorldPosition(earthPosWorld);
+    rayLine.geometry.dispose();
+    rayLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), earthPosWorld.clone().multiplyScalar(0.8)]);
+
+    // 太阳光指向地球
     const lightDir = earthPosWorld.clone().normalize();
     sunLight.position.copy(lightDir.clone().multiplyScalar(-50));
     sunLight.target.position.copy(earthPosWorld);
     sunLight.target.updateMatrixWorld();
-
-    // 更新射线指示线
-    rayLine.geometry.dispose();
-    rayLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), earthPosWorld.clone().multiplyScalar(0.8)]);
 
     // 地球自转
     earth.rotation.y += edt * 0.5;
@@ -626,57 +839,47 @@ function animate() {
     moon.position.z = Math.sin(mA) * 1.2;
     moon.rotation.y += edt * 0.8;
 
-    // 空间站
+    // 2. 月相更新
+    updateMoonPhase();
+
+    // 空间站轨道（带倾角，已经在group上设置好了）
     const iA = vT * 8.0;
-    iss.position.x = Math.cos(iA) * 1.6;
-    iss.position.z = Math.sin(iA) * 1.6;
+    iss.position.x = Math.cos(iA) * 1.8;
+    iss.position.z = Math.sin(iA) * 1.8;
     iss.position.y = Math.sin(iA * 2) * 0.15;
     const tA = vT * 6.0 + 1.2;
-    tiangong.position.x = Math.cos(tA) * 1.4;
-    tiangong.position.z = Math.sin(tA) * 1.4;
+    tiangong.position.x = Math.cos(tA) * 2.0;
+    tiangong.position.z = Math.sin(tA) * 2.0;
     tiangong.position.y = Math.sin(tA * 2 + 0.5) * 0.12;
 
     // 太阳自转
     sun.rotation.y += edt * 0.1;
+    // 光晕脉动
+    const pulse = 1 + Math.sin(vT * 1.5) * 0.03;
+    sun.children.forEach(c => { if (c.isSprite && c !== maskSprite) { const b = c.scale.x / pulse; c.scale.set(b * pulse, b * pulse, 1); } });
 
-    // ===== 日食/月食检测 =====
-    const eclipseType = checkEclipse();
-    let statusText = '';
-    let moonColor = '#c8c4be';
-    if (eclipseType === 'solar') {
-        statusText = ' 🌑 日食中！';
-        moonColor = '#332211'; // 变暗
-    } else if (eclipseType === 'lunar') {
-        statusText = ' 🌕 月食中！';
-        moonColor = '#884422'; // 红铜色
-    }
-    eclipseStatus.textContent = statusText;
-    // 调整月球颜色和自发光
-    if (eclipseType === 'solar') {
-        moon.material.emissive.setHex(0x221100);
-        moon.material.color.setHex(0x332211);
-    } else if (eclipseType === 'lunar') {
-        moon.material.emissive.setHex(0x442211);
-        moon.material.color.setHex(0x884422);
-    } else {
-        moon.material.emissive.setHex(0x000000);
-        moon.material.color.setHex(0xc8c4be);
-    }
-    moon.material.needsUpdate = true;
+    // 5. 日食/月食检测
+    checkAndApplyEclipse();
 
-    // 更新日期显示
+    // 4. 更新日期显示
     const deg = ((theta * 180 / Math.PI) % 360 + 360) % 360;
     angleText.textContent = deg.toFixed(0) + '°';
     dateText.textContent = getSeasonName(theta);
+    simDate.textContent = getSimulatedDate(theta);
 
-    // 第一视角跟随
+    // 3. 太阳直射纬度显示（在info-card或tooltip里）
+    const declination = getSolarDeclination(theta);
+    // 在tooltip显示 或 更新info-card
+
+    // 日食/月食倒计时
+    if (Math.floor(performance.now() / 1000) % 5 === 0) {
+        updateEclipseCountdown();
+    }
+
+    // 第一视角
     if (isFP && fpTarget) {
         const tp = new THREE.Vector3();
-        if (fpTarget.parent === earthTiltGroup || fpTarget.parent === moonOrbit || fpTarget.parent === issGroup || fpTarget.parent === tgGroup) {
-            fpTarget.getWorldPosition(tp);
-        } else {
-            tp.copy(fpTarget.position);
-        }
+        fpTarget.getWorldPosition(tp);
         controls.target.lerp(tp, 0.05);
     }
 
@@ -689,7 +892,7 @@ animate();
 window.onresize = () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); };
 window.addEventListener('keydown', e => { if (e.key === ' ' && !e.target.matches('input')) { e.preventDefault(); iP ? btnPlay.click() : btnPause.click(); } if (e.key === 'Escape' && isFP) { exitFP(); infoPanel.classList.remove('visible'); } });
 camera.position.set(8, 6, 14); controls.update();
-console.log('🌍 地球版·开普勒轨道·日食月食 已启动');
+console.log('🌍 地球版·开普勒轨道·日食月食·8大优化 已启动');
 </script>
 </body>
 </html>
